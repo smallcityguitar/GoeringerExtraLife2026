@@ -6,7 +6,8 @@ Two pages and two tiny API functions, hosted on Vercel:
 |---|---|---|
 | `/` | The Steam Deck (arcade) | Full-screen display: goals, donor wall, uptime, countdown, guest stream, message, donation pop-ups |
 | `/control` | Your PC | Dashboard: scenes, auto-rotate, guest streamers (cycle or pin), message board, marathon timer, Extra Life setup, preview |
-| `/api/state` | both | Shared state (GET public, POST needs your admin token) |
+| `/ticker` | OBS / a small window | Slim scrolling info bar: raised total, goal progress, latest donation, next milestone, team total, uptime, your custom messages |
+| `/api/state` | all pages | Shared state (GET public, POST needs your admin token) |
 | `/api/extralife` | display | Cached proxy to the public Extra Life (DonorDrive) API |
 
 ## Deploy (about 5 minutes)
@@ -21,6 +22,12 @@ Two pages and two tiny API functions, hosted on Vercel:
 ## Using the control panel
 
 Edits are **staged**: the preview on the right shows your draft, and nothing reaches the arcade until you press **Apply to arcade** (or Ctrl+Enter). **Discard changes** reverts the form. Turn on **Auto-apply (live mode)** if you'd rather each change go out immediately, e.g. when flipping scenes with keys 1-6 mid-stream. **Start now** and **Send test alert** always act immediately.
+
+## Ticker bar (`/ticker`)
+
+A thin bar (about 4-5% of screen height) that sits at the bottom. Best use: in OBS add a **Browser Source** pointing at `https://YOUR-PROJECT.vercel.app/ticker`, size 1920x1080 (or your canvas size). The page background is transparent, so only the bar shows. For a plain desktop window, make a short, wide browser window and add `?solid=1` to the address.
+
+Options (add to the URL, combine with `&`): `?scale=1.3` bigger, `?speed=1.5` faster, `?items=progress,donor,milestone,team,custom` choose and reorder what scrolls, `?clear=1` no bar background, `?nourl=1` hide the donate link, `?poll=10` seconds between refreshes. Custom messages are edited in the control panel (**Ticker bar** card) and go live with **Apply**.
 
 ## Steam Deck
 

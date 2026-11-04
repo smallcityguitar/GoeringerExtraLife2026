@@ -72,6 +72,8 @@
   .hint { font-size: 12px; color: var(--dim); margin-top: 6px; }
   #previewBox { position: relative; width: 100%; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: #000; }
   #preview { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; transform-origin: top left; }
+  #tickerBox { position: relative; width: 100%; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: #000; }
+  #tickerPreview { position: absolute; left: 0; top: 0; width: 1280px; height: 34px; border: 0; transform-origin: top left; }
   #elStatus { font-size: 13px; color: var(--dim); }
   #elStatus b { color: var(--amber); }
   #toast { position: fixed; right: 20px; bottom: 20px; background: var(--card2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 30; max-width: 420px; }
@@ -152,6 +154,15 @@
     </section>
 
     <section class="card">
+      <h2>Ticker bar</h2>
+      <label for="tickerMessages">Custom messages (one per line, they scroll along the bar)</label>
+      <textarea id="tickerMessages" rows="4" placeholder="Join the team: extra-life.org&#10;Thank you for supporting the kids!"></textarea>
+      <label for="tickerUrl">Bar address</label>
+      <div class="row"><input type="text" id="tickerUrl" readonly><button class="btn ghost small" id="copyTicker" type="button">Copy</button></div>
+      <div class="hint">A slim bar with your raised total, goal progress, latest donation, next milestone, team total, uptime and these messages. Add it in OBS as a <b>Browser Source</b> (e.g. 1920x1080, it sits at the bottom with a transparent background), or open it in a short browser window with <code>?solid=1</code> on the end. Other options: <code>?scale=1.3</code> bigger, <code>?speed=1.5</code> faster, <code>?items=progress,donor,custom</code> pick/reorder items, <code>?clear=1</code> no bar background.</div>
+    </section>
+
+    <section class="card">
       <h2>Marathon timer</h2>
       <div class="grid2">
         <div><label for="evStart">Start</label><input type="datetime-local" id="evStart"></div>
@@ -189,6 +200,8 @@
     <section class="card" style="position:sticky;top:78px">
       <h2 class="row" style="justify-content:space-between;margin-bottom:12px"><span>Preview</span><span class="pill live" id="previewPill">LIVE</span></h2>
       <div id="previewBox"><iframe id="preview" src="/?preview=1" title="Arcade preview"></iframe></div>
+      <div class="hint" style="margin:14px 0 6px">Ticker bar</div>
+      <div id="tickerBox"><iframe id="tickerPreview" src="/ticker?preview=1&solid=1" title="Ticker preview"></iframe></div>
       <div class="actions" style="justify-content:space-between">
         <div id="elStatus">Extra Life: set a participant ID</div>
         <span class="hint" style="margin:0">Shows your draft. Press Apply to send it to the arcade.</span>
@@ -312,6 +325,7 @@
     $('cycleSeconds').value = s.streamCycle.seconds;
     $('messageTitle').value = s.messageTitle || '';
     $('message').value = s.message || '';
+    $('tickerMessages').value = (s.tickerMessages || []).join('\n');
     $('evStart').value = toLocalInput(s.eventStart);
     $('evEnd').value = toLocalInput(s.eventEnd);
     $('participantId').value = s.participantId || '';
@@ -351,6 +365,7 @@
       streamPinned: pinned,
       messageTitle: $('messageTitle').value.trim(),
       message: $('message').value.trim(),
+      tickerMessages: $('tickerMessages').value.split('\n').map(function (l) { return l.trim(); }).filter(Boolean).slice(0, 10),
       stretchGoals: Array.prototype.map.call($('goalRows').querySelectorAll('.goal-row'), function (r) {
         var i = r.querySelectorAll('input'); return { amount: Number(i[0].value) || 0, label: i[1].value.trim() };
       }).filter(function (g) { return g.amount > 0 && g.label; })
@@ -365,7 +380,7 @@
       participantId: s.participantId, teamId: s.teamId, accent: s.accent, alerts: !!s.alerts,
       eventStart: s.eventStart, eventEnd: s.eventEnd, streamers: s.streamers,
       streamCycle: { enabled: !!s.streamCycle.enabled, seconds: s.streamCycle.seconds }, streamPinned: pin,
-      messageTitle: s.messageTitle, message: s.message, stretchGoals: s.stretchGoals
+      messageTitle: s.messageTitle, message: s.message, tickerMessages: s.tickerMessages, stretchGoals: s.stretchGoals
     };
   }
   function norm(d) {   // effective pinned streamer = pinned one, else the first
@@ -424,7 +439,7 @@
   }
   function labelFor(k) {
     return ({ scene: 'scene', rotation: 'rotation', participantId: 'participant', teamId: 'team', accent: 'color', alerts: 'alerts', eventStart: 'timer', eventEnd: 'timer',
-      streamers: 'guest streamers', streamCycle: 'streamer cycling', streamPinned: 'guest streamers', messageTitle: 'message', message: 'message', stretchGoals: 'stretch goals' })[k] || k;
+      streamers: 'guest streamers', streamCycle: 'streamer cycling', streamPinned: 'guest streamers', messageTitle: 'message', message: 'message', tickerMessages: 'ticker messages', stretchGoals: 'stretch goals' })[k] || k;
   }
 
   /* ---------- edits ---------- */
@@ -488,22 +503,30 @@
     s.streamers = d.streamers.map(cleanChan).filter(Boolean);
     s.streamCycle = { enabled: d.streamCycle.enabled, seconds: Math.max(10, d.streamCycle.seconds) };
     s.streamPinned = s.streamers.indexOf(cleanChan(d.streamPinned)) >= 0 ? cleanChan(d.streamPinned) : '';
-    s.messageTitle = d.messageTitle; s.message = d.message; s.stretchGoals = d.stretchGoals;
+    s.messageTitle = d.messageTitle; s.message = d.message; s.tickerMessages = d.tickerMessages; s.stretchGoals = d.stretchGoals;
     s.rev = ++previewRev;                       // forces the preview to re-render every time
     return s;
   }
+  var tickerReady = false;
   function sendPreview() {
-    var w = $('preview').contentWindow;
-    if (w && applied && previewReady) w.postMessage({ type: 'state', state: previewState(), serverTime: Date.now() }, location.origin);
+    if (!applied) return;
+    var st = previewState(), msg = { type: 'state', state: st, serverTime: Date.now() };
+    var w = $('preview').contentWindow, t = $('tickerPreview').contentWindow;
+    if (w && previewReady) w.postMessage(msg, location.origin);
+    if (t && tickerReady) t.postMessage(msg, location.origin);
   }
   window.addEventListener('message', function (e) {
     if (e.origin !== location.origin || !e.data || e.data.type !== 'ready') return;
-    previewReady = true; sendPreview();
+    if (e.source === $('tickerPreview').contentWindow) tickerReady = true; else previewReady = true;
+    sendPreview();
   });
   function fitPreview() {
     var box = $('previewBox'), s = box.clientWidth / 1280;
     $('preview').style.transform = 'scale(' + s + ')';
     box.style.height = Math.round(720 * s) + 'px';
+    var tb = $('tickerBox');
+    $('tickerPreview').style.transform = 'scale(' + (tb.clientWidth / 1280) + ')';
+    tb.style.height = Math.round(34 * (tb.clientWidth / 1280)) + 'px';
   }
   window.addEventListener('resize', fitPreview);
 
@@ -527,6 +550,11 @@
   buildRotChips();
   fitPreview();
   $('preview').addEventListener('load', fitPreview);
+  $('tickerUrl').value = location.origin + '/ticker';
+  $('copyTicker').addEventListener('click', function () {
+    var v = $('tickerUrl').value;
+    (navigator.clipboard ? navigator.clipboard.writeText(v) : Promise.reject()).then(function () { toast('Ticker address copied'); }, function () { $('tickerUrl').select(); toast('Press Ctrl+C to copy'); });
+  });
   if (token) verify().catch(function (e) { showLogin(e.status === 401 ? 'Saved token no longer works.' : e.message); });
   else showLogin('');
 })();

@@ -1,0 +1,215 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Ticker Bar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&family=Open+Sans:wght@600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root { --accent: #FFCB05; --navy: #253746; --navy-deep: #16222d; --teal: #0E7CA2; --cyan: #00A0D5; --dim: #a9bccb; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  /* transparent page so it works as an OBS browser source; ?solid=1 paints the page and fills the window */
+  html, body { height: 100%; background: transparent; overflow: hidden; cursor: none; }
+  body { --u: calc(var(--scale, 1) * 1vw); font-family: 'Open Sans', Arial, sans-serif; font-weight: 700; color: #fff; }
+  body.solid { background: var(--navy-deep); }
+
+  #bar {
+    position: fixed; left: 0; right: 0; bottom: 0; height: calc(var(--u) * 2.6);
+    display: flex; align-items: center; overflow: hidden;
+    background: rgba(22, 34, 45, 0.94); border-top: 1px solid rgba(255, 255, 255, 0.14);
+  }
+  body.solid #bar { height: 100vh; }
+  body.clear #bar { background: transparent; border-top: 0; text-shadow: 0 0 6px rgba(0, 0, 0, 0.9), 0 1px 3px rgba(0, 0, 0, 0.9); }
+  #strip { position: absolute; left: 0; top: 0; height: calc(var(--u) * 0.2); min-height: 2px; width: 0; background: linear-gradient(90deg, var(--teal), var(--cyan)); transition: width 1.2s ease; }
+
+  #chip {
+    flex: none; margin: 0 calc(var(--u) * 1) 0 calc(var(--u) * 0.8); padding: 0 calc(var(--u) * 1.1); height: 70%;
+    display: none; align-items: center; border-radius: 999px; background: var(--accent); color: var(--navy);
+    font-family: 'Montserrat', 'Open Sans', sans-serif; font-weight: 800; font-size: calc(var(--u) * 1.3); white-space: nowrap; font-variant-numeric: tabular-nums;
+  }
+  #scroll { position: relative; flex: 1; height: 100%; overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); mask-image: linear-gradient(90deg, transparent, #000 3%, #000 97%, transparent); }
+  #track { position: absolute; left: 0; top: 0; height: 100%; display: flex; align-items: center; width: max-content; animation: scroll var(--dur, 40s) linear infinite; will-change: transform; }
+  .seq { display: flex; align-items: center; flex: none; }
+  .item { display: inline-flex; align-items: baseline; gap: 0.5em; font-size: calc(var(--u) * 1.35); white-space: nowrap; }
+  .item::after { content: ''; align-self: center; width: calc(var(--u) * 0.5); height: calc(var(--u) * 0.5); border-radius: 50%; background: var(--accent); margin: 0 calc(var(--u) * 1.8); flex: none; }
+  .item .lab { color: var(--accent); font-weight: 800; letter-spacing: 0.06em; font-size: 0.82em; text-transform: uppercase; }
+  .item .msg { color: var(--dim); font-weight: 600; }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+
+  #right { flex: none; display: flex; align-items: center; gap: calc(var(--u) * 1.2); margin: 0 calc(var(--u) * 1) 0 calc(var(--u) * 0.8); font-size: calc(var(--u) * 1.25); white-space: nowrap; }
+  #timer { font-family: 'Montserrat', 'Open Sans', sans-serif; font-weight: 800; font-variant-numeric: tabular-nums; display: none; }
+  #timer .lab { color: var(--accent); font-size: 0.8em; letter-spacing: 0.06em; margin-right: 0.5em; }
+  #url { color: var(--dim); font-weight: 700; display: none; }
+</style>
+</head>
+<body>
+<div id="bar">
+  <div id="strip"></div>
+  <div id="chip"></div>
+  <div id="scroll"><div id="track"></div></div>
+  <div id="right"><span id="timer"></span><span id="url"></span></div>
+</div>
+
+<script>
+/* Ticker bar. URL options:
+   ?scale=1.2          size multiplier           ?speed=1.5    scroll speed multiplier (default 1)
+   ?items=progress,donor,milestone,team,custom   choose / reorder built-in items
+   ?solid=1            solid background, bar fills the window (for a small standalone window)
+   ?clear=1            no bar background (text only, for placing over video)
+   ?poll=10            seconds between state refreshes                                          */
+(function () {
+  'use strict';
+  var qs = new URLSearchParams(location.search);
+  var PREVIEW = qs.has('preview');
+  var POLL_MS = Math.max(3, Number(qs.get('poll')) || 10) * 1000;
+  var EL_MS = 15000;
+  var ORDER = (qs.get('items') || 'progress,donor,milestone,team,custom').split(',').map(function (x) { return x.trim(); });
+  var scale = Number(qs.get('scale')) > 0 ? Number(qs.get('scale')) : 1;
+  var speedMul = Number(qs.get('speed')) > 0 ? Number(qs.get('speed')) : 1;
+
+  document.documentElement.style.setProperty('--scale', scale);
+  if (qs.has('solid')) document.body.classList.add('solid');
+  if (qs.has('clear')) document.body.classList.add('clear');
+
+  var state = null, offset = 0, fails = 0, lastKey = null;
+  var el = { participant: null, donations: [], milestones: [], team: null };
+
+  function $(id) { return document.getElementById(id); }
+  function clear(n) { while (n.firstChild) n.removeChild(n.firstChild); }
+  function h(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function now() { return Date.now() + offset; }
+  var fmt0 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 });
+  var fmt2 = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2 });
+  function money(n) { n = Number(n) || 0; return Math.round(n * 100) % 100 === 0 ? fmt0.format(n) : fmt2.format(n); }
+  function pad(n) { return (n < 10 ? '0' : '') + n; }
+  function fmtDur(ms) { var s = Math.max(0, Math.floor(ms / 1000)); return pad(Math.floor(s / 3600)) + ':' + pad(Math.floor(s / 60) % 60) + ':' + pad(s % 60); }
+  function cut(t, n) { t = String(t || ''); return t.length > n ? t.slice(0, n - 1).trim() + '…' : t; }
+
+  /* ---------- content ---------- */
+  function milestonesList(raised) {
+    var items = [], keys = {};
+    (state.stretchGoals || []).concat(el.milestones || []).forEach(function (g) {
+      var k = g.amount + '|' + g.label;
+      if (!keys[k]) { keys[k] = 1; items.push({ amount: Number(g.amount), label: g.label }); }
+    });
+    return items.sort(function (a, b) { return a.amount - b.amount; }).filter(function (g) { return g.amount > raised; });
+  }
+
+  function buildItems() {
+    var out = [], p = el.participant;
+    var raised = p ? Number(p.sumDonations) || 0 : 0, goal = p ? Number(p.fundraisingGoal) || 0 : 0;
+    ORDER.forEach(function (kind) {
+      if (kind === 'progress' && p) {
+        if (goal && raised >= goal) out.push({ lab: 'Goal smashed!', text: money(raised) + ' raised · ' + p.numDonations + ' donations' });
+        else out.push({ lab: 'Progress', text: (goal ? Math.floor(raised / goal * 100) + '% of ' + money(goal) : money(raised)) + ' · ' + p.numDonations + ' donation' + (p.numDonations === 1 ? '' : 's') });
+      } else if (kind === 'donor' && el.donations && el.donations.length) {
+        var d = el.donations[0];
+        out.push({ lab: 'Latest donation', text: (d.name || 'Anonymous') + ' ' + money(d.amount), msg: d.message ? '“' + cut(d.message, 60) + '”' : '' });
+      } else if (kind === 'milestone' && p) {
+        var next = milestonesList(raised)[0];
+        if (next) out.push({ lab: 'Next milestone', text: money(next.amount) + ' · ' + next.label });
+      } else if (kind === 'team' && el.team && el.team.name) {
+        out.push({ lab: 'Team ' + el.team.name, text: money(el.team.sumDonations) + (el.team.fundraisingGoal ? ' of ' + money(el.team.fundraisingGoal) : '') });
+      } else if (kind === 'custom') {
+        (state.tickerMessages || []).forEach(function (m) { out.push({ lab: '', text: m }); });
+      }
+    });
+    if (!out.length) out.push({ lab: '', text: state.participantId ? 'Loading…' : 'Add your Extra Life participant ID in the control panel' });
+    return out;
+  }
+
+  function itemEl(it) {
+    var e = h('span', 'item');
+    if (it.lab) e.appendChild(h('span', 'lab', it.lab));
+    e.appendChild(h('span', 'txt', it.text));
+    if (it.msg) e.appendChild(h('span', 'msg', it.msg));
+    return e;
+  }
+
+  function build(list) {
+    var track = $('track'); clear(track);
+    function seq(rep) { var s = h('div', 'seq'); for (var r = 0; r < rep; r++) list.forEach(function (it) { s.appendChild(itemEl(it)); }); return s; }
+    var s1 = seq(1); track.appendChild(s1);
+    var w = s1.getBoundingClientRect().width, cw = $('scroll').clientWidth, rep = 1;
+    if (w > 0 && w < cw) { rep = Math.ceil(cw / w); clear(track); s1 = seq(rep); track.appendChild(s1); w = s1.getBoundingClientRect().width; }
+    track.appendChild(seq(rep));                                   // second copy makes the loop seamless
+    var pxPerSec = (window.innerWidth / 100) * scale * 5 * speedMul;
+    track.style.setProperty('--dur', Math.max(5, w / pxPerSec) + 's');
+  }
+
+  function render() {
+    if (!state) return;
+    document.documentElement.style.setProperty('--accent', state.accent || '#FFCB05');
+    var p = el.participant, chip = $('chip');
+    if (p) {
+      chip.textContent = money(p.sumDonations) + (p.fundraisingGoal ? ' / ' + money(p.fundraisingGoal) : '');
+      chip.style.display = 'flex';
+      $('strip').style.width = (p.fundraisingGoal ? Math.min(100, p.sumDonations / p.fundraisingGoal * 100) : 0) + '%';
+    } else { chip.style.display = 'none'; $('strip').style.width = '0'; }
+    var u = $('url');
+    u.textContent = state.participantId ? 'extra-life.org/participants/' + state.participantId : '';
+    u.style.display = state.participantId && !qs.has('nourl') ? 'inline' : 'none';
+
+    var list = buildItems(), key = JSON.stringify(list);
+    if (key !== lastKey) { lastKey = key; build(list); }           // only rebuild (and restart the scroll) when content changed
+  }
+
+  function tickTimer() {
+    var t = $('timer');
+    if (!state) return;
+    var st = Date.parse(state.eventStart), en = Date.parse(state.eventEnd), n = now();
+    var hasS = !isNaN(st), hasE = !isNaN(en), lab = '', val = '';
+    if (hasS && n < st) { lab = 'Starts in'; val = fmtDur(st - n); }
+    else if (hasS) { var done = hasE && n >= en; lab = done ? 'Final' : 'Live'; val = fmtDur((hasE ? Math.min(n, en) : n) - st); }
+    else if (hasE && n < en) { lab = 'Ends in'; val = fmtDur(en - n); }
+    if (!val) { t.style.display = 'none'; return; }
+    t.style.display = 'inline';
+    t.textContent = '';
+    t.appendChild(h('span', 'lab', lab.toUpperCase())); t.appendChild(document.createTextNode(val));
+  }
+
+  /* ---------- data ---------- */
+  function applyState(s, serverTime) {
+    if (typeof serverTime === 'number') offset = serverTime - Date.now();
+    if (!s) return;
+    var pidChanged = !state || s.participantId !== state.participantId || s.teamId !== state.teamId;
+    state = s;
+    render(); tickTimer();
+    if (pidChanged) fetchEL();
+  }
+
+  function fetchEL() {
+    if (!state) return;
+    if (!state.participantId) { el = { participant: null, donations: [], milestones: [], team: null }; render(); return; }
+    fetch('/api/extralife?pid=' + encodeURIComponent(state.participantId) + (state.teamId ? '&tid=' + encodeURIComponent(state.teamId) : ''), { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) { el = { participant: d.participant, donations: d.donations || [], milestones: d.milestones || [], team: d.team || null }; render(); })
+      .catch(function () { /* keep last good data */ });
+  }
+
+  function poll() {
+    fetch('/api/state', { cache: 'no-store' })
+      .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function (d) { fails = 0; applyState(d.state, d.serverTime); })
+      .catch(function () { fails++; })
+      .then(function () { setTimeout(poll, POLL_MS); });
+  }
+
+  if (PREVIEW) {
+    window.addEventListener('message', function (e) {
+      if (e.origin !== location.origin || !e.data || e.data.type !== 'state') return;
+      applyState(e.data.state, e.data.serverTime);
+    });
+    if (window.parent !== window) window.parent.postMessage({ type: 'ready' }, location.origin);
+  } else { poll(); }
+  setInterval(tickTimer, 500);
+  setInterval(fetchEL, EL_MS);
+  var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(function () { lastKey = null; render(); }, 250); });
+  if (document.fonts && document.fonts.ready) document.fonts.ready.then(function () { lastKey = null; render(); });
+})();
+</script>
+</body>
+</html>

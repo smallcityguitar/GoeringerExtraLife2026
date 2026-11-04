@@ -26,6 +26,7 @@ const DEFAULTS = {
   messageTitle: '',
   message: '',
   stretchGoals: [],
+  tickerMessages: [],
   testAlert: { nonce: 0, name: '', amount: 0, message: '' },
   updatedAt: 0,
 };
@@ -48,6 +49,7 @@ function merge(saved) {
   s.testAlert = Object.assign({}, DEFAULTS.testAlert, (saved && saved.testAlert) || {});
   s.streamCycle = Object.assign({}, DEFAULTS.streamCycle, (saved && saved.streamCycle) || {});
   s.streamers = Array.isArray(s.streamers) ? s.streamers.slice() : [];
+  s.tickerMessages = Array.isArray(s.tickerMessages) ? s.tickerMessages.slice() : [];
   if (saved && saved.streamChannel && !s.streamers.length) s.streamers = [saved.streamChannel]; // migrate v1 state
   delete s.streamChannel;
   delete s.title;
@@ -143,6 +145,10 @@ function applyPatch(cur, patch) {
   }
   if ('messageTitle' in patch) s.messageTitle = str(patch.messageTitle, 60);
   if ('message' in patch) s.message = str(patch.message, 400);
+
+  if (Array.isArray(patch.tickerMessages)) {
+    s.tickerMessages = patch.tickerMessages.map((m) => str(m, 120)).filter(Boolean).slice(0, 10);
+  }
 
   if (Array.isArray(patch.stretchGoals)) {
     s.stretchGoals = patch.stretchGoals
