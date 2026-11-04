@@ -1,0 +1,390 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Arcade Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@800&family=Open+Sans:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #16222d; --card: #253746; --card2: #2e465a; --line: #3d566b; --text: #ffffff; --dim: #a9bccb;
+    --accent: #FFCB05; --cyan: #4cc3ea; --amber: #FFCB05; --ok: #7ec242; --bad: #ff8a8a; --teal: #0E7CA2;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 'Open Sans', Arial, sans-serif; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-family: 'Montserrat', 'Open Sans', sans-serif; font-weight: 800; font-size: 17px; margin: 0; letter-spacing: 0.06em; }
+  header h1 span { color: var(--accent); }
+  .pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
+  .pill.ok { color: var(--ok); border-color: #2c6a47; }
+  .pill.bad { color: var(--bad); border-color: #6a2c2c; }
+  .row { display: flex; align-items: center; gap: 10px; }
+  main { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(420px, 1.15fr); gap: 18px; padding: 18px 22px 40px; max-width: 1500px; margin: 0 auto; }
+  @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
+  .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.16em; color: var(--cyan); text-transform: uppercase; }
+  .scenes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+  .scene-btn { background: var(--card2); border: 2px solid var(--line); color: var(--text); border-radius: 12px; padding: 14px 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; transition: border-color .15s, transform .05s; }
+  .scene-btn .ico { display: block; font-size: 22px; margin-bottom: 4px; }
+  .scene-btn small { display: block; color: var(--dim); font-weight: 400; margin-top: 2px; font-size: 11px; }
+  .scene-btn:hover { border-color: var(--dim); }
+  .scene-btn:active { transform: scale(.97); }
+  .scene-btn.on { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 18%, var(--card2)); }
+  label { display: block; font-size: 12px; color: var(--dim); margin: 10px 0 4px; }
+  input[type=text], input[type=number], input[type=password], input[type=datetime-local], textarea {
+    width: 100%; background: #0f0d1f; color: var(--text); border: 1px solid var(--line); border-radius: 8px; padding: 9px 10px; font: inherit;
+  }
+  input:focus, textarea:focus { outline: 2px solid var(--accent); outline-offset: 0; }
+  input[type=color] { width: 48px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: #0f0d1f; padding: 2px; }
+  textarea { resize: vertical; min-height: 64px; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  button.btn { background: var(--accent); color: #253746; border: 0; border-radius: 999px; padding: 9px 20px; font: inherit; font-weight: 800; cursor: pointer; }
+  button.btn.ghost { background: transparent; border: 2px solid var(--line); color: var(--text); }
+  button.btn.small { padding: 5px 10px; font-size: 13px; }
+  button.btn:hover { filter: brightness(1.12); }
+  button.btn:disabled { opacity: .5; cursor: default; }
+  .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
+  .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: var(--text); font-size: 14px; }
+  .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
+  .chips label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); font-size: 13px; }
+  .goal-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; margin-bottom: 6px; }
+  .hint { font-size: 12px; color: var(--dim); margin-top: 6px; }
+  #previewBox { position: relative; width: 100%; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: #000; }
+  #preview { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; transform-origin: top left; }
+  #elStatus { font-size: 13px; color: var(--dim); }
+  #elStatus b { color: var(--amber); }
+  #toast { position: fixed; right: 20px; bottom: 20px; background: var(--card2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 30; }
+  #toast.on { opacity: 1; transform: none; }
+  #toast.err { border-color: var(--bad); color: var(--bad); }
+  #login { position: fixed; inset: 0; background: rgba(6, 5, 12, 0.94); display: flex; align-items: center; justify-content: center; z-index: 40; }
+  #login .box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 26px; width: min(420px, 92vw); }
+  #login h2 { margin: 0 0 6px; }
+  #loginErr { color: var(--bad); font-size: 13px; min-height: 1.2em; margin-top: 8px; }
+  kbd { background: var(--card2); border: 1px solid var(--line); border-radius: 4px; padding: 0 5px; font-size: 11px; }
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form class="box" id="loginForm">
+    <h2>Arcade Control</h2>
+    <div class="hint" style="margin:0 0 14px">Enter the <code>ADMIN_TOKEN</code> you set in your Vercel project.</div>
+    <input type="password" id="tokenInput" placeholder="Admin token" autocomplete="current-password" autofocus>
+    <div id="loginErr"></div>
+    <div class="actions"><button class="btn" type="submit">Unlock</button></div>
+  </form>
+</div>
+
+<header>
+  <h1><span>●</span> ARCADE CONTROL</h1>
+  <div class="row">
+    <span class="pill" id="storePill">connecting…</span>
+    <a class="pill" href="/" target="_blank" rel="noopener" style="text-decoration:none">open display ↗</a>
+    <button class="btn ghost small" id="logoutBtn">Lock</button>
+  </div>
+</header>
+
+<main>
+  <div class="col">
+    <section class="card">
+      <h2>Now showing on the arcade</h2>
+      <div class="scenes" id="scenes">
+        <button class="scene-btn" data-scene="goals"><span class="ico">🎯</span>Goals<small>key 1</small></button>
+        <button class="scene-btn" data-scene="donors"><span class="ico">🏆</span>Donor wall<small>key 2</small></button>
+        <button class="scene-btn" data-scene="uptime"><span class="ico">⏱</span>Uptime<small>key 3</small></button>
+        <button class="scene-btn" data-scene="countdown"><span class="ico">⏳</span>Countdown<small>key 4</small></button>
+        <button class="scene-btn" data-scene="stream"><span class="ico">📺</span>Guest stream<small>key 5</small></button>
+        <button class="scene-btn" data-scene="message"><span class="ico">💬</span>Message<small>key 6</small></button>
+      </div>
+      <div class="check" style="margin-top:14px"><input type="checkbox" id="rotEnabled"><label for="rotEnabled" style="margin:0;color:var(--text);font-size:14px">Auto-rotate scenes</label></div>
+      <div class="row" style="gap:8px"><span class="hint" style="margin:0">Switch every</span>
+        <input type="number" id="rotSeconds" min="5" max="300" value="20" style="width:80px"><span class="hint" style="margin:0">seconds, through:</span></div>
+      <div class="chips" id="rotScenes"></div>
+      <div class="hint">Scenes with nothing to show (no guest channel, empty message) are skipped automatically.</div>
+    </section>
+
+    <section class="card">
+      <h2>Guest streamer</h2>
+      <label for="streamChannel">Twitch channel (name or URL)</label>
+      <input type="text" id="streamChannel" placeholder="e.g. teammate_name">
+      <div class="actions"><button class="btn" id="showStream">Show on arcade</button></div>
+      <div class="hint">Plays muted on the arcade so it can't bleed into your mic.</div>
+    </section>
+
+    <section class="card">
+      <h2>Message board</h2>
+      <label for="messageTitle">Big headline</label>
+      <input type="text" id="messageTitle" maxlength="60" placeholder="BE RIGHT BACK">
+      <label for="message">Text</label>
+      <textarea id="message" maxlength="400" placeholder="Snack break! Donate to keep me playing."></textarea>
+      <div class="actions"><button class="btn" id="showMessage">Show on arcade</button></div>
+    </section>
+
+    <section class="card">
+      <h2>Marathon timer</h2>
+      <div class="grid2">
+        <div><label for="evStart">Start</label><input type="datetime-local" id="evStart"></div>
+        <div><label for="evEnd">End</label><input type="datetime-local" id="evEnd"></div>
+      </div>
+      <div class="actions">
+        <button class="btn" id="saveTimes">Save times</button>
+        <button class="btn ghost" id="startNow">Start now</button>
+        <span class="row" style="gap:6px"><input type="number" id="evHours" value="24" min="1" max="72" style="width:70px"><span class="hint" style="margin:0">hour marathon</span></span>
+      </div>
+      <div class="hint">Times use this computer's clock/time zone. The arcade syncs to the server's clock, so drift on the Steam Deck won't matter.</div>
+    </section>
+
+    <section class="card">
+      <h2>Extra Life setup</h2>
+      <div class="grid2">
+        <div><label for="participantId">Participant ID</label><input type="text" id="participantId" inputmode="numeric" placeholder="e.g. 566838"></div>
+        <div><label for="teamId">Team ID (optional)</label><input type="text" id="teamId" inputmode="numeric"></div>
+      </div>
+      <div class="hint">Find it in your Extra Life page URL: extra-life.org/participants/<b>NUMBER</b></div>
+      <div class="grid2">
+        <div><label for="title">Header title</label><input type="text" id="title" maxlength="40" placeholder="WILL'S EXTRA LIFE"></div>
+        <div><label for="accent">Accent color</label><input type="color" id="accent" value="#FFCB05"></div>
+      </div>
+      <div class="check"><input type="checkbox" id="alerts"><label for="alerts" style="margin:0;color:var(--text);font-size:14px">Pop up an alert on the arcade for each new donation</label></div>
+      <label>Stretch goals (shown under the progress bar)</label>
+      <div id="goalRows"></div>
+      <button class="btn ghost small" id="addGoal">+ Add goal</button>
+      <div class="actions">
+        <button class="btn" id="saveSetup">Save setup</button>
+        <button class="btn ghost" id="testAlert">Send test alert</button>
+      </div>
+    </section>
+  </div>
+
+  <div class="col">
+    <section class="card" style="position:sticky;top:70px">
+      <h2>Live preview</h2>
+      <div id="previewBox"><iframe id="preview" src="/?preview=1" title="Arcade preview"></iframe></div>
+      <div class="actions" style="justify-content:space-between">
+        <div id="elStatus">Extra Life: set a participant ID</div>
+        <span class="hint" style="margin:0">Preview mirrors what the arcade shows.</span>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div id="toast"></div>
+
+<script>
+(function () {
+  'use strict';
+  var SCENE_NAMES = { goals: 'Goals', donors: 'Donor wall', uptime: 'Uptime', countdown: 'Countdown', stream: 'Guest stream', message: 'Message' };
+  var token = '';
+  try { token = localStorage.getItem('arcadeToken') || ''; } catch (e) {}
+  var state = null, serverTime = Date.now(), previewReady = false;
+
+  function $(id) { return document.getElementById(id); }
+  function toast(msg, err) {
+    var t = $('toast'); t.textContent = msg; t.className = 'on' + (err ? ' err' : '');
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.className = ''; }, 2400);
+  }
+
+  /* ---------- API ---------- */
+  function api(method, body) {
+    var opt = { method: method, cache: 'no-store', headers: { 'Content-Type': 'application/json' } };
+    if (token) opt.headers['x-admin-token'] = token;
+    if (body) opt.body = JSON.stringify(body);
+    return fetch('/api/state', opt).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (d) {
+        if (!r.ok) { var e = new Error(d.error || 'HTTP ' + r.status); e.status = r.status; throw e; }
+        return d;
+      });
+    });
+  }
+  function push(patch, okMsg) {
+    return api('POST', { patch: patch }).then(function (d) {
+      setState(d.state, d.serverTime); if (okMsg) toast(okMsg); return d;
+    }).catch(function (e) { toast(e.message, true); if (e.status === 401) showLogin(''); throw e; });
+  }
+
+  /* ---------- login ---------- */
+  function showLogin(msg) { $('login').style.display = 'flex'; $('loginErr').textContent = msg || ''; $('tokenInput').focus(); }
+  function verify() {
+    return api('POST', { action: 'verify' }).then(function (d) {
+      $('login').style.display = 'none';
+      setState(d.state, d.serverTime, true);
+      var p = $('storePill');
+      if (d.persistent) { p.textContent = 'connected · saved to Redis'; p.className = 'pill ok'; }
+      else { p.textContent = 'connected · TEMPORARY storage (add Redis)'; p.className = 'pill bad'; }
+      refreshEL();
+    });
+  }
+  $('loginForm').addEventListener('submit', function (e) {
+    e.preventDefault();
+    token = $('tokenInput').value;
+    verify().then(function () { try { localStorage.setItem('arcadeToken', token); } catch (e) {} })
+      .catch(function (err) { $('loginErr').textContent = err.message; });
+  });
+  $('logoutBtn').addEventListener('click', function () {
+    try { localStorage.removeItem('arcadeToken'); } catch (e) {}
+    token = ''; $('tokenInput').value = ''; showLogin('');
+  });
+
+  /* ---------- state -> UI ---------- */
+  function toLocalInput(iso) {
+    if (!iso) return '';
+    var d = new Date(iso); if (isNaN(d)) return '';
+    function p(n) { return (n < 10 ? '0' : '') + n; }
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function fromLocalInput(v) { if (!v) return ''; var d = new Date(v); return isNaN(d) ? '' : d.toISOString(); }
+
+  function buildRotChips() {
+    var box = $('rotScenes'); box.textContent = '';
+    Object.keys(SCENE_NAMES).forEach(function (k) {
+      var l = document.createElement('label');
+      var c = document.createElement('input'); c.type = 'checkbox'; c.value = k;
+      c.addEventListener('change', pushRotation);
+      l.appendChild(c); l.appendChild(document.createTextNode(SCENE_NAMES[k]));
+      box.appendChild(l);
+    });
+  }
+  function pushRotation() {
+    var scenes = Array.prototype.filter.call($('rotScenes').querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; });
+    push({ rotation: { enabled: $('rotEnabled').checked, seconds: Number($('rotSeconds').value) || 20, scenes: scenes } },
+      $('rotEnabled').checked ? 'Auto-rotate on' : 'Auto-rotate off');
+  }
+
+  function goalRow(amount, label) {
+    var r = document.createElement('div'); r.className = 'goal-row';
+    var a = document.createElement('input'); a.type = 'number'; a.min = '1'; a.placeholder = '$ amount'; a.value = amount || '';
+    var l = document.createElement('input'); l.type = 'text'; l.maxLength = 40; l.placeholder = 'What happens at this amount?'; l.value = label || '';
+    var x = document.createElement('button'); x.className = 'btn ghost small'; x.type = 'button'; x.textContent = '✕';
+    x.addEventListener('click', function () { r.remove(); });
+    r.appendChild(a); r.appendChild(l); r.appendChild(x);
+    $('goalRows').appendChild(r);
+  }
+
+  function highlight() {
+    Array.prototype.forEach.call(document.querySelectorAll('.scene-btn'), function (b) {
+      b.classList.toggle('on', state && b.dataset.scene === state.scene && !(state.rotation && state.rotation.enabled));
+    });
+  }
+
+  function fillForms() {
+    var s = state;
+    $('streamChannel').value = s.streamChannel || '';
+    $('messageTitle').value = s.messageTitle || '';
+    $('message').value = s.message || '';
+    $('evStart').value = toLocalInput(s.eventStart);
+    $('evEnd').value = toLocalInput(s.eventEnd);
+    $('participantId').value = s.participantId || '';
+    $('teamId').value = s.teamId || '';
+    $('title').value = s.title || '';
+    $('accent').value = s.accent || '#FFCB05';
+    $('alerts').checked = !!s.alerts;
+    $('goalRows').textContent = '';
+    (s.stretchGoals || []).forEach(function (g) { goalRow(g.amount, g.label); });
+  }
+
+  function setState(s, st, fillAll) {
+    state = s; if (typeof st === 'number') serverTime = st;
+    highlight();
+    $('rotEnabled').checked = !!s.rotation.enabled;
+    $('rotSeconds').value = s.rotation.seconds;
+    Array.prototype.forEach.call($('rotScenes').querySelectorAll('input'), function (c) { c.checked = s.rotation.scenes.indexOf(c.value) >= 0; });
+    if (fillAll) fillForms();
+    sendPreview();
+  }
+
+  /* ---------- preview ---------- */
+  function sendPreview() {
+    var w = $('preview').contentWindow;
+    if (w && state && previewReady) w.postMessage({ type: 'state', state: state, serverTime: serverTime }, location.origin);
+  }
+  window.addEventListener('message', function (e) {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'ready') return;
+    previewReady = true; sendPreview();
+  });
+  function fitPreview() {
+    var box = $('previewBox'), s = box.clientWidth / 1280;
+    $('preview').style.transform = 'scale(' + s + ')';
+    box.style.height = Math.round(720 * s) + 'px';
+  }
+  window.addEventListener('resize', fitPreview);
+
+  /* ---------- Extra Life status ---------- */
+  function refreshEL() {
+    var box = $('elStatus');
+    if (!state || !state.participantId) { box.textContent = 'Extra Life: set a participant ID'; return; }
+    fetch('/api/extralife?pid=' + encodeURIComponent(state.participantId), { cache: 'no-store' })
+      .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status); return d; }); })
+      .then(function (d) {
+        var p = d.participant; box.textContent = '';
+        box.appendChild(document.createTextNode((p.displayName || 'Participant') + ': '));
+        var b = document.createElement('b'); b.textContent = '$' + p.sumDonations.toLocaleString(); box.appendChild(b);
+        box.appendChild(document.createTextNode(' of $' + p.fundraisingGoal.toLocaleString() + ' · ' + p.numDonations + ' donations'));
+      })
+      .catch(function (e) { box.textContent = 'Extra Life lookup failed: ' + e.message; });
+  }
+  setInterval(refreshEL, 30000);
+
+  /* ---------- wiring ---------- */
+  function setScene(name) { push({ scene: name, rotation: { enabled: false, seconds: Number($('rotSeconds').value) || 20, scenes: state.rotation.scenes } }, SCENE_NAMES[name]); }
+  Array.prototype.forEach.call(document.querySelectorAll('.scene-btn'), function (b) {
+    b.addEventListener('click', function () { setScene(b.dataset.scene); });
+  });
+  $('rotEnabled').addEventListener('change', pushRotation);
+  $('rotSeconds').addEventListener('change', pushRotation);
+
+  $('showStream').addEventListener('click', function () {
+    var ch = $('streamChannel').value.trim();
+    if (!ch) return toast('Enter a Twitch channel', true);
+    push({ streamChannel: ch, scene: 'stream', rotation: { enabled: false, seconds: state.rotation.seconds, scenes: state.rotation.scenes } }, 'Showing guest stream').then(function () { $('streamChannel').value = state.streamChannel; });
+  });
+  $('showMessage').addEventListener('click', function () {
+    push({ messageTitle: $('messageTitle').value, message: $('message').value, scene: 'message', rotation: { enabled: false, seconds: state.rotation.seconds, scenes: state.rotation.scenes } }, 'Showing message');
+  });
+  $('saveTimes').addEventListener('click', function () {
+    push({ eventStart: fromLocalInput($('evStart').value), eventEnd: fromLocalInput($('evEnd').value) }, 'Times saved');
+  });
+  $('startNow').addEventListener('click', function () {
+    var hrs = Math.min(72, Math.max(1, Number($('evHours').value) || 24));
+    var start = new Date(), end = new Date(start.getTime() + hrs * 3600000);
+    push({ eventStart: start.toISOString(), eventEnd: end.toISOString() }, 'Marathon started: ' + hrs + 'h').then(function () {
+      $('evStart').value = toLocalInput(state.eventStart); $('evEnd').value = toLocalInput(state.eventEnd);
+    });
+  });
+  $('addGoal').addEventListener('click', function () { goalRow('', ''); });
+  $('saveSetup').addEventListener('click', function () {
+    var goals = Array.prototype.map.call($('goalRows').querySelectorAll('.goal-row'), function (r) {
+      var i = r.querySelectorAll('input'); return { amount: Number(i[0].value) || 0, label: i[1].value };
+    });
+    push({
+      participantId: $('participantId').value, teamId: $('teamId').value, title: $('title').value,
+      accent: $('accent').value, alerts: $('alerts').checked, stretchGoals: goals
+    }, 'Setup saved').then(function () { fillForms(); refreshEL(); });
+  });
+  $('testAlert').addEventListener('click', function () {
+    api('POST', { action: 'testAlert' }).then(function (d) { setState(d.state, d.serverTime); toast('Test alert sent'); })
+      .catch(function (e) { toast(e.message, true); });
+  });
+
+  document.addEventListener('keydown', function (e) {
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || $('login').style.display !== 'none') return;
+    var map = { '1': 'goals', '2': 'donors', '3': 'uptime', '4': 'countdown', '5': 'stream', '6': 'message' };
+    if (map[e.key] && state) setScene(map[e.key]);
+  });
+
+  /* ---------- boot ---------- */
+  buildRotChips();
+  fitPreview();
+  $('preview').addEventListener('load', fitPreview);
+  if (token) verify().catch(function (e) { showLogin(e.status === 401 ? 'Saved token no longer works.' : e.message); });
+  else showLogin('');
+})();
+</script>
+</body>
+</html>
