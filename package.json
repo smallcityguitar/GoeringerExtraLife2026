@@ -1,0 +1,12 @@
+{
+  "name": "extralife-arcade",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Extra Life arcade-cabinet display + PC control panel, hosted on Vercel",
+  "scripts": {
+    "dev": "ADMIN_TOKEN=dev node dev.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
