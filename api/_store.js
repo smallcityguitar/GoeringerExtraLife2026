@@ -14,14 +14,15 @@ const DEFAULTS = {
   rev: 0,
   scene: 'goals',
   rotation: { enabled: false, seconds: 20, scenes: ['goals', 'donors', 'uptime'], startedAt: 0 },
-  title: 'EXTRA LIFE',
   accent: '#ffcb05',
   participantId: '',
   teamId: '',
   alerts: true,
   eventStart: '',
   eventEnd: '',
-  streamChannel: '',
+  streamers: [],
+  streamCycle: { enabled: false, seconds: 45 },
+  streamPinned: '',
   messageTitle: '',
   message: '',
   stretchGoals: [],
@@ -45,6 +46,11 @@ function merge(saved) {
   const s = Object.assign({}, DEFAULTS, saved || {});
   s.rotation = Object.assign({}, DEFAULTS.rotation, (saved && saved.rotation) || {});
   s.testAlert = Object.assign({}, DEFAULTS.testAlert, (saved && saved.testAlert) || {});
+  s.streamCycle = Object.assign({}, DEFAULTS.streamCycle, (saved && saved.streamCycle) || {});
+  s.streamers = Array.isArray(s.streamers) ? s.streamers.slice() : [];
+  if (saved && saved.streamChannel && !s.streamers.length) s.streamers = [saved.streamChannel]; // migrate v1 state
+  delete s.streamChannel;
+  delete s.title;
   return s;
 }
 
@@ -67,7 +73,20 @@ async function saveState(state) {
 
 const clamp = (n, lo, hi) => Math.min(hi, Math.max(lo, n));
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
-const digits = (v) => String(v == null ? '' : v).replace(/\D/g, '').slice(0, 10);
+// Accepts a numeric ID, or a link containing it (teamID=123 / participantID=123 / /participants/123).
+// Vanity names like "bossnation" are not IDs, so reject them loudly instead of silently dropping them.
+function extractId(v, kind) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s) return '';
+  if (/^\d{1,10}$/.test(s)) return s;
+  const q = s.match(new RegExp(kind + 'ID=(\\d{1,10})', 'i'));
+  if (q) return q[1];
+  const p = s.match(new RegExp('/' + kind + 's/(\\d{1,10})(?:[/?#]|$)', 'i'));
+  if (p) return p[1];
+  const e = new Error('The ' + kind + ' ID must be a number (or a link containing it). A name like "' + s.slice(0, 30) + '" is not an ID.');
+  e.status = 400;
+  throw e;
+}
 
 function isoOrEmpty(v) {
   if (v === '' || v == null) return '';
@@ -96,16 +115,32 @@ function applyPatch(cur, patch) {
     s.rotation.startedAt = Date.now(); // restart the cycle whenever rotation settings change
   }
 
-  if ('title' in patch) s.title = str(patch.title, 40) || 'EXTRA LIFE';
   if ('accent' in patch && /^#[0-9a-f]{6}$/i.test(patch.accent)) s.accent = patch.accent.toLowerCase();
-  if ('participantId' in patch) s.participantId = digits(patch.participantId);
-  if ('teamId' in patch) s.teamId = digits(patch.teamId);
+  if ('participantId' in patch) s.participantId = extractId(patch.participantId, 'participant');
+  if ('teamId' in patch) s.teamId = extractId(patch.teamId, 'team');
   if ('alerts' in patch) s.alerts = !!patch.alerts;
 
   if ('eventStart' in patch) { const v = isoOrEmpty(patch.eventStart); if (v !== null) s.eventStart = v; }
   if ('eventEnd' in patch) { const v = isoOrEmpty(patch.eventEnd); if (v !== null) s.eventEnd = v; }
 
-  if ('streamChannel' in patch) s.streamChannel = cleanChannel(patch.streamChannel);
+  if (Array.isArray(patch.streamers)) {
+    const seen = new Set();
+    s.streamers = patch.streamers.map(cleanChannel).filter((c) => {
+      const k = c.toLowerCase();
+      if (!c || seen.has(k)) return false;
+      seen.add(k);
+      return true;
+    }).slice(0, 10);
+  }
+  if (patch.streamCycle && typeof patch.streamCycle === 'object') {
+    const c = patch.streamCycle;
+    if ('enabled' in c) s.streamCycle.enabled = !!c.enabled;
+    if ('seconds' in c) s.streamCycle.seconds = clamp(Number(c.seconds) || 45, 10, 600);
+  }
+  if ('streamPinned' in patch || Array.isArray(patch.streamers)) {
+    const c = cleanChannel('streamPinned' in patch ? patch.streamPinned : s.streamPinned);
+    s.streamPinned = s.streamers.includes(c) ? c : '';
+  }
   if ('messageTitle' in patch) s.messageTitle = str(patch.messageTitle, 60);
   if ('message' in patch) s.message = str(patch.message, 400);
 

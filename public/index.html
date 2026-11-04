@@ -31,21 +31,16 @@
 
   #app {
     position: fixed; inset: 0;
-    display: grid; grid-template-rows: auto 1fr auto; gap: calc(var(--u) * 1.6);
+    display: grid; grid-template-rows: 1fr auto; gap: calc(var(--u) * 1.6);
     padding: calc(var(--u) * 2.2) calc(var(--u) * 3);
     background:
       radial-gradient(90% 70% at 100% 100%, rgba(0, 160, 213, 0.22), transparent 60%),
       linear-gradient(155deg, #2e4659 0%, var(--navy) 38%, #1a2a37 100%);
   }
 
-  /* header / footer */
-  #head { display: flex; align-items: center; justify-content: space-between; gap: calc(var(--u) * 2); }
-  #title {
-    font-family: 'Montserrat', 'Open Sans', sans-serif; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em;
-    font-size: calc(var(--u) * 2.6); color: #fff; display: flex; align-items: center;
-  }
-  #title::before { content: ''; width: 0.62em; height: 0.62em; border-radius: 50%; background: var(--accent); margin-right: 0.55em; flex: none; }
+  /* floating total chip + footer */
   #hud {
+    position: fixed; top: calc(var(--u) * 2.2); right: calc(var(--u) * 3); z-index: 5;
     font-size: calc(var(--u) * 2.1); background: var(--accent); color: var(--on-accent);
     padding: calc(var(--u) * 0.55) calc(var(--u) * 1.8); border-radius: 999px;
     opacity: 0; transition: opacity 0.5s;
@@ -165,10 +160,7 @@
 </head>
 <body data-scene="goals">
 <div id="app">
-  <header id="head">
-    <div id="title">EXTRA LIFE</div>
-    <div id="hud" class="num"></div>
-  </header>
+  <div id="hud" class="num"></div>
 
   <main id="stage">
     <!-- GOALS -->
@@ -217,7 +209,7 @@
     <section class="scene" id="scene-stream">
       <div id="streamWrap">
         <iframe id="twitch" title="Guest stream" allow="autoplay; fullscreen" allowfullscreen></iframe>
-        <div id="streamEmpty" class="empty">No guest stream set. Pick a channel in the control panel.</div>
+        <div id="streamEmpty" class="empty">No guest streamers yet. Add some in the control panel.</div>
         <div id="streamLabel"></div>
       </div>
     </section>
@@ -254,7 +246,7 @@
 
   var state = null, offset = 0, current = '', fails = 0;
   var el = { participant: null, donations: [], milestones: [], team: null };
-  var seen = null, seenPid = '', lastNonce = null;
+  var seen = null, seenPid = '', lastNonce = null, streamSince = 0;
   var alertQueue = [], alerting = false, streamKey = '';
 
   function $(id) { return document.getElementById(id); }
@@ -278,7 +270,9 @@
     var first = state === null;
     if (!first && s.rev === state.rev) return;
     var pidChanged = first || s.participantId !== state.participantId || s.teamId !== state.teamId;
+    var streamChanged = first || JSON.stringify([s.streamers, s.streamCycle, s.streamPinned]) !== JSON.stringify([state.streamers, state.streamCycle, state.streamPinned]);
     state = s;
+    if (streamChanged) streamSince = Date.now();
     var nonce = s.testAlert && s.testAlert.nonce;
     if (lastNonce === null) lastNonce = nonce;
     else if (nonce !== lastNonce) {
@@ -293,7 +287,6 @@
 
   function renderStatic() {
     document.documentElement.style.setProperty('--accent', state.accent || '#FFCB05');
-    $('title').textContent = state.title || 'EXTRA LIFE';
     $('donate').textContent = 'Donate: extra-life.org' + (state.participantId ? '/participants/' + state.participantId : '');
     $('msgTitle').textContent = state.messageTitle || '';
     $('msgTitle').style.display = state.messageTitle ? 'block' : 'none';
@@ -435,7 +428,7 @@
 
   /* ---------- scenes ---------- */
   function usable(name) {
-    if (name === 'stream') return !!state.streamChannel;
+    if (name === 'stream') return !!(state.streamers && state.streamers.length);
     if (name === 'message') return !!(state.message || state.messageTitle);
     return true;
   }
@@ -453,6 +446,7 @@
 
   function setActive(name) {
     current = name;
+    if (name === 'stream') streamSince = Date.now();         // cycling starts from the first streamer each time the scene appears
     document.body.dataset.scene = name;
     ['goals', 'donors', 'countdown', 'uptime', 'stream', 'message'].forEach(function (n) {
       $('scene-' + n).classList.toggle('active', n === name);
@@ -460,18 +454,32 @@
     syncStream(name);
   }
 
+  // which guest is on screen right now (cycles through the list, or shows the pinned/first one)
+  function streamNow() {
+    var l = (state && state.streamers) || [];
+    if (!l.length) return null;
+    var c = state.streamCycle || {};
+    if (c.enabled && l.length > 1) {
+      var i = Math.floor((Date.now() - streamSince) / ((c.seconds || 45) * 1000)) % l.length;
+      i = Math.max(0, i);
+      return { name: l[i], i: i, n: l.length };
+    }
+    var pin = state.streamPinned && l.indexOf(state.streamPinned) >= 0 ? state.streamPinned : l[0];
+    return { name: pin, i: l.indexOf(pin), n: l.length };
+  }
+
   function syncStream(active) {
     var f = $('twitch');
-    var ch = state && state.streamChannel;
+    var s = state ? streamNow() : null;
     var showing = active === 'stream';
-    $('streamEmpty').style.display = showing && !ch ? 'flex' : 'none';
-    $('streamLabel').style.display = showing && ch ? 'block' : 'none';
-    if (showing && ch) {
-      $('streamLabel').textContent = 'NOW WATCHING · ' + ch;
+    $('streamEmpty').style.display = showing && !s ? 'flex' : 'none';
+    $('streamLabel').style.display = showing && s ? 'block' : 'none';
+    if (showing && s) {
+      $('streamLabel').textContent = 'NOW WATCHING · ' + s.name + (s.n > 1 ? '   ' + (s.i + 1) + '/' + s.n : '');
       if (PREVIEW) return;                                  // don't load a second live player inside the control panel
-      if (streamKey !== ch) {
-        streamKey = ch;
-        f.src = 'https://player.twitch.tv/?channel=' + encodeURIComponent(ch) + '&parent=' + encodeURIComponent(location.hostname) + '&muted=true&autoplay=true';
+      if (streamKey !== s.name) {
+        streamKey = s.name;
+        f.src = 'https://player.twitch.tv/?channel=' + encodeURIComponent(s.name) + '&parent=' + encodeURIComponent(location.hostname) + '&muted=true&autoplay=true';
       }
     } else if (streamKey) {
       streamKey = '';
@@ -507,6 +515,7 @@
     if (!state) return;
     var a = activeScene();
     if (a !== current) setActive(a);
+    else if (a === 'stream') syncStream(a);
     if (a === 'countdown' || a === 'uptime') {
       var i = timerInfo(a), p = a === 'countdown' ? 'cd' : 'up';
       $(p + 'Label').textContent = i.label; $(p + 'Time').textContent = i.time; $(p + 'Sub').textContent = i.sub;

@@ -37,6 +37,6 @@ module.exports = async (req, res) => {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ error: 'Method not allowed' });
   } catch (err) {
-    return res.status(500).json({ error: String(err && err.message ? err.message : err) });
+    return res.status((err && err.status) || 500).json({ error: String(err && err.message ? err.message : err) });
   }
 };

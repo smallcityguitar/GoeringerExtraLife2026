@@ -15,20 +15,32 @@
   }
   * { box-sizing: border-box; }
   body { margin: 0; background: var(--bg); color: var(--text); font: 15px/1.4 'Open Sans', Arial, sans-serif; }
-  header { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px; border-bottom: 1px solid var(--line); background: var(--card); position: sticky; top: 0; z-index: 5; }
+  header { display: flex; align-items: center; justify-content: space-between; padding: 12px 22px; border-bottom: 1px solid var(--line); background: var(--card); }
   header h1 { font-family: 'Montserrat', 'Open Sans', sans-serif; font-weight: 800; font-size: 17px; margin: 0; letter-spacing: 0.06em; }
   header h1 span { color: var(--accent); }
   .pill { font-size: 12px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); color: var(--dim); }
-  .pill.ok { color: var(--ok); border-color: #2c6a47; }
-  .pill.bad { color: var(--bad); border-color: #6a2c2c; }
+  .pill.ok { color: var(--ok); border-color: #4a7a2a; }
+  .pill.bad { color: var(--bad); border-color: #7a3a3a; }
+  .pill.draft { color: #253746; background: var(--accent); border-color: var(--accent); font-weight: 700; }
+  .pill.live { color: var(--ok); border-color: #4a7a2a; }
   .row { display: flex; align-items: center; gap: 10px; }
+
+  /* apply bar */
+  #applybar { position: sticky; top: 0; z-index: 6; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; padding: 10px 22px; background: var(--bg); border-bottom: 2px solid var(--line); }
+  #applybar.dirty { border-bottom-color: var(--accent); background: #2a2a1a; }
+  #applyStatus { font-weight: 700; }
+  #applyStatus.dirty { color: var(--accent); }
+  #applyStatus.clean { color: var(--ok); }
+  #applyStatus small { display: block; font-weight: 400; color: var(--dim); font-size: 12px; }
+  #applyBtn { font-size: 16px; padding: 11px 28px; }
+
   main { display: grid; grid-template-columns: minmax(380px, 1fr) minmax(420px, 1.15fr); gap: 18px; padding: 18px 22px 40px; max-width: 1500px; margin: 0 auto; }
   @media (max-width: 960px) { main { grid-template-columns: 1fr; } }
   .col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
   .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px; }
   .card h2 { margin: 0 0 12px; font-size: 12px; letter-spacing: 0.16em; color: var(--cyan); text-transform: uppercase; }
   .scenes { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
-  .scene-btn { background: var(--card2); border: 2px solid var(--line); color: var(--text); border-radius: 12px; padding: 14px 8px; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; transition: border-color .15s, transform .05s; }
+  .scene-btn { background: var(--card2); border: 2px solid var(--line); color: var(--text); border-radius: 12px; padding: 14px 8px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; text-align: center; transition: border-color .15s, transform .05s; }
   .scene-btn .ico { display: block; font-size: 22px; margin-bottom: 4px; }
   .scene-btn small { display: block; color: var(--dim); font-weight: 400; margin-top: 2px; font-size: 11px; }
   .scene-btn:hover { border-color: var(--dim); }
@@ -44,24 +56,28 @@
   .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
   button.btn { background: var(--accent); color: #253746; border: 0; border-radius: 999px; padding: 9px 20px; font: inherit; font-weight: 800; cursor: pointer; }
   button.btn.ghost { background: transparent; border: 2px solid var(--line); color: var(--text); }
-  button.btn.small { padding: 5px 10px; font-size: 13px; }
+  button.btn.small { padding: 5px 12px; font-size: 13px; }
   button.btn:hover { filter: brightness(1.12); }
-  button.btn:disabled { opacity: .5; cursor: default; }
+  button.btn:disabled { opacity: .4; cursor: default; filter: none; }
   .actions { display: flex; gap: 10px; margin-top: 12px; flex-wrap: wrap; align-items: center; }
   .check { display: flex; align-items: center; gap: 8px; margin: 8px 0; color: var(--text); font-size: 14px; }
   .check input { width: 18px; height: 18px; accent-color: var(--accent); }
+  .check label { margin: 0; color: var(--text); font-size: 14px; }
   .chips { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 8px; }
   .chips label { display: flex; align-items: center; gap: 6px; margin: 0; color: var(--text); font-size: 13px; }
+  .chips input { accent-color: var(--accent); }
   .goal-row { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; margin-bottom: 6px; }
+  .srow { display: grid; grid-template-columns: auto 1fr auto; gap: 10px; align-items: center; margin-bottom: 6px; }
+  .srow input[type=radio] { width: 18px; height: 18px; accent-color: var(--accent); margin: 0; }
   .hint { font-size: 12px; color: var(--dim); margin-top: 6px; }
   #previewBox { position: relative; width: 100%; border: 2px solid var(--line); border-radius: 10px; overflow: hidden; background: #000; }
   #preview { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; transform-origin: top left; }
   #elStatus { font-size: 13px; color: var(--dim); }
   #elStatus b { color: var(--amber); }
-  #toast { position: fixed; right: 20px; bottom: 20px; background: var(--card2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 30; }
+  #toast { position: fixed; right: 20px; bottom: 20px; background: var(--card2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 30; max-width: 420px; }
   #toast.on { opacity: 1; transform: none; }
   #toast.err { border-color: var(--bad); color: var(--bad); }
-  #login { position: fixed; inset: 0; background: rgba(6, 5, 12, 0.94); display: flex; align-items: center; justify-content: center; z-index: 40; }
+  #login { position: fixed; inset: 0; background: rgba(6, 10, 14, 0.95); display: flex; align-items: center; justify-content: center; z-index: 40; }
   #login .box { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 26px; width: min(420px, 92vw); }
   #login h2 { margin: 0 0 6px; }
   #loginErr { color: var(--bad); font-size: 13px; min-height: 1.2em; margin-top: 8px; }
@@ -89,31 +105,42 @@
   </div>
 </header>
 
+<div id="applybar">
+  <div id="applyStatus" class="clean">✓ Arcade is up to date</div>
+  <div class="row">
+    <div class="check" style="margin:0"><input type="checkbox" id="autoApply"><label for="autoApply">Auto-apply (live mode)</label></div>
+    <button class="btn ghost" id="discardBtn" disabled>Discard changes</button>
+    <button class="btn" id="applyBtn" disabled>Apply to arcade</button>
+  </div>
+</div>
+
 <main>
   <div class="col">
     <section class="card">
-      <h2>Now showing on the arcade</h2>
+      <h2>Scene</h2>
       <div class="scenes" id="scenes">
         <button class="scene-btn" data-scene="goals"><span class="ico">🎯</span>Goals<small>key 1</small></button>
         <button class="scene-btn" data-scene="donors"><span class="ico">🏆</span>Donor wall<small>key 2</small></button>
         <button class="scene-btn" data-scene="uptime"><span class="ico">⏱</span>Uptime<small>key 3</small></button>
         <button class="scene-btn" data-scene="countdown"><span class="ico">⏳</span>Countdown<small>key 4</small></button>
-        <button class="scene-btn" data-scene="stream"><span class="ico">📺</span>Guest stream<small>key 5</small></button>
+        <button class="scene-btn" data-scene="stream"><span class="ico">📺</span>Guest streams<small>key 5</small></button>
         <button class="scene-btn" data-scene="message"><span class="ico">💬</span>Message<small>key 6</small></button>
       </div>
-      <div class="check" style="margin-top:14px"><input type="checkbox" id="rotEnabled"><label for="rotEnabled" style="margin:0;color:var(--text);font-size:14px">Auto-rotate scenes</label></div>
+      <div class="check" style="margin-top:14px"><input type="checkbox" id="rotEnabled"><label for="rotEnabled">Auto-rotate scenes</label></div>
       <div class="row" style="gap:8px"><span class="hint" style="margin:0">Switch every</span>
         <input type="number" id="rotSeconds" min="5" max="300" value="20" style="width:80px"><span class="hint" style="margin:0">seconds, through:</span></div>
       <div class="chips" id="rotScenes"></div>
-      <div class="hint">Scenes with nothing to show (no guest channel, empty message) are skipped automatically.</div>
+      <div class="hint">When auto-rotate is on it overrides the single scene above. Scenes with nothing to show (no guests, empty message) are skipped.</div>
     </section>
 
     <section class="card">
-      <h2>Guest streamer</h2>
-      <label for="streamChannel">Twitch channel (name or URL)</label>
-      <input type="text" id="streamChannel" placeholder="e.g. teammate_name">
-      <div class="actions"><button class="btn" id="showStream">Show on arcade</button></div>
-      <div class="hint">Plays muted on the arcade so it can't bleed into your mic.</div>
+      <h2>Guest streamers</h2>
+      <div id="streamRows"></div>
+      <div class="actions" style="margin-top:6px"><button class="btn ghost small" id="addStreamer" type="button">+ Add streamer</button></div>
+      <div class="check" style="margin-top:14px"><input type="checkbox" id="cycleEnabled"><label for="cycleEnabled">Cycle through them</label></div>
+      <div class="row" style="gap:8px"><span class="hint" style="margin:0">Switch every</span>
+        <input type="number" id="cycleSeconds" min="10" max="600" value="45" style="width:80px"><span class="hint" style="margin:0">seconds</span></div>
+      <div class="hint">Channel name or Twitch URL. With cycling off, the arcade shows the one marked with the dot. Always muted on the arcade so it can't bleed into your mic.</div>
     </section>
 
     <section class="card">
@@ -122,7 +149,6 @@
       <input type="text" id="messageTitle" maxlength="60" placeholder="BE RIGHT BACK">
       <label for="message">Text</label>
       <textarea id="message" maxlength="400" placeholder="Snack break! Donate to keep me playing."></textarea>
-      <div class="actions"><button class="btn" id="showMessage">Show on arcade</button></div>
     </section>
 
     <section class="card">
@@ -132,42 +158,40 @@
         <div><label for="evEnd">End</label><input type="datetime-local" id="evEnd"></div>
       </div>
       <div class="actions">
-        <button class="btn" id="saveTimes">Save times</button>
-        <button class="btn ghost" id="startNow">Start now</button>
+        <button class="btn ghost" id="startNow" type="button">Start now</button>
         <span class="row" style="gap:6px"><input type="number" id="evHours" value="24" min="1" max="72" style="width:70px"><span class="hint" style="margin:0">hour marathon</span></span>
       </div>
-      <div class="hint">Times use this computer's clock/time zone. The arcade syncs to the server's clock, so drift on the Steam Deck won't matter.</div>
+      <div class="hint"><b>Start now</b> takes effect immediately (it only sets these two times). Everything else waits for Apply. Times use this computer's clock; the arcade syncs to the server's clock, so drift on the Steam Deck won't matter.</div>
     </section>
 
     <section class="card">
       <h2>Extra Life setup</h2>
       <div class="grid2">
-        <div><label for="participantId">Participant ID</label><input type="text" id="participantId" inputmode="numeric" placeholder="e.g. 566838"></div>
+        <div><label for="participantId">Participant ID</label><input type="text" id="participantId" inputmode="numeric" placeholder="e.g. 582119"></div>
         <div><label for="teamId">Team ID (optional)</label><input type="text" id="teamId" inputmode="numeric"></div>
       </div>
-      <div class="hint">Find it in your Extra Life page URL: extra-life.org/participants/<b>NUMBER</b></div>
+      <div class="hint">Both must be <b>numbers</b>. Participant ID is in your page URL (extra-life.org/participants/<b>NUMBER</b>). A team page URL with a name (like /teams/yourteam) has no number in it: open the team page and look for <b>teamID=NUMBER</b> in its links. Pasting a link that contains the number works too.</div>
       <div class="grid2">
-        <div><label for="title">Header title</label><input type="text" id="title" maxlength="40" placeholder="WILL'S EXTRA LIFE"></div>
         <div><label for="accent">Accent color</label><input type="color" id="accent" value="#FFCB05"></div>
       </div>
-      <div class="check"><input type="checkbox" id="alerts"><label for="alerts" style="margin:0;color:var(--text);font-size:14px">Pop up an alert on the arcade for each new donation</label></div>
+      <div class="check"><input type="checkbox" id="alerts"><label for="alerts">Pop up an alert on the arcade for each new donation</label></div>
       <label>Stretch goals (shown under the progress bar)</label>
       <div id="goalRows"></div>
-      <button class="btn ghost small" id="addGoal">+ Add goal</button>
+      <button class="btn ghost small" id="addGoal" type="button">+ Add goal</button>
       <div class="actions">
-        <button class="btn" id="saveSetup">Save setup</button>
-        <button class="btn ghost" id="testAlert">Send test alert</button>
+        <button class="btn ghost" id="testAlert" type="button">Send test alert</button>
+        <span class="hint" style="margin:0">Test alert pops up on the live arcade immediately.</span>
       </div>
     </section>
   </div>
 
   <div class="col">
-    <section class="card" style="position:sticky;top:70px">
-      <h2>Live preview</h2>
+    <section class="card" style="position:sticky;top:78px">
+      <h2 class="row" style="justify-content:space-between;margin-bottom:12px"><span>Preview</span><span class="pill live" id="previewPill">LIVE</span></h2>
       <div id="previewBox"><iframe id="preview" src="/?preview=1" title="Arcade preview"></iframe></div>
       <div class="actions" style="justify-content:space-between">
         <div id="elStatus">Extra Life: set a participant ID</div>
-        <span class="hint" style="margin:0">Preview mirrors what the arcade shows.</span>
+        <span class="hint" style="margin:0">Shows your draft. Press Apply to send it to the arcade.</span>
       </div>
     </section>
   </div>
@@ -178,15 +202,19 @@
 <script>
 (function () {
   'use strict';
-  var SCENE_NAMES = { goals: 'Goals', donors: 'Donor wall', uptime: 'Uptime', countdown: 'Countdown', stream: 'Guest stream', message: 'Message' };
+  var SCENE_NAMES = { goals: 'Goals', donors: 'Donor wall', uptime: 'Uptime', countdown: 'Countdown', stream: 'Guest streams', message: 'Message' };
+  var SCENE_KEYS = { '1': 'goals', '2': 'donors', '3': 'uptime', '4': 'countdown', '5': 'stream', '6': 'message' };
   var token = '';
   try { token = localStorage.getItem('arcadeToken') || ''; } catch (e) {}
-  var state = null, serverTime = Date.now(), previewReady = false;
+
+  var applied = null;          // what the arcade is showing right now (server state)
+  var draftScene = 'goals';    // staged scene (everything else is read straight from the form)
+  var dirty = false, applying = false, previewReady = false, previewRev = 0, rotEditAt = Date.now(), autoTimer = null;
 
   function $(id) { return document.getElementById(id); }
   function toast(msg, err) {
     var t = $('toast'); t.textContent = msg; t.className = 'on' + (err ? ' err' : '');
-    clearTimeout(toast._t); toast._t = setTimeout(function () { t.className = ''; }, 2400);
+    clearTimeout(toast._t); toast._t = setTimeout(function () { t.className = ''; }, err ? 5000 : 2400);
   }
 
   /* ---------- API ---------- */
@@ -201,18 +229,13 @@
       });
     });
   }
-  function push(patch, okMsg) {
-    return api('POST', { patch: patch }).then(function (d) {
-      setState(d.state, d.serverTime); if (okMsg) toast(okMsg); return d;
-    }).catch(function (e) { toast(e.message, true); if (e.status === 401) showLogin(''); throw e; });
-  }
 
   /* ---------- login ---------- */
   function showLogin(msg) { $('login').style.display = 'flex'; $('loginErr').textContent = msg || ''; $('tokenInput').focus(); }
   function verify() {
     return api('POST', { action: 'verify' }).then(function (d) {
       $('login').style.display = 'none';
-      setState(d.state, d.serverTime, true);
+      applied = d.state; writeForm(applied);
       var p = $('storePill');
       if (d.persistent) { p.textContent = 'connected · saved to Redis'; p.className = 'pill ok'; }
       else { p.textContent = 'connected · TEMPORARY storage (add Redis)'; p.className = 'pill bad'; }
@@ -230,7 +253,7 @@
     token = ''; $('tokenInput').value = ''; showLogin('');
   });
 
-  /* ---------- state -> UI ---------- */
+  /* ---------- helpers ---------- */
   function toLocalInput(iso) {
     if (!iso) return '';
     var d = new Date(iso); if (isNaN(d)) return '';
@@ -238,69 +261,240 @@
     return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + 'T' + p(d.getHours()) + ':' + p(d.getMinutes());
   }
   function fromLocalInput(v) { if (!v) return ''; var d = new Date(v); return isNaN(d) ? '' : d.toISOString(); }
+  // keep the exact stored timestamp (it has seconds) while the field still shows the same minute
+  function timeFromInput(v, appliedIso) { return v === toLocalInput(appliedIso) ? (appliedIso || '') : fromLocalInput(v); }
+  function cleanChan(v) { return String(v || '').trim().replace(/^https?:\/\/(www\.)?twitch\.tv\//i, '').replace(/^@/, '').replace(/[/?#].*$/, ''); }
 
-  function buildRotChips() {
-    var box = $('rotScenes'); box.textContent = '';
-    Object.keys(SCENE_NAMES).forEach(function (k) {
-      var l = document.createElement('label');
-      var c = document.createElement('input'); c.type = 'checkbox'; c.value = k;
-      c.addEventListener('change', pushRotation);
-      l.appendChild(c); l.appendChild(document.createTextNode(SCENE_NAMES[k]));
-      box.appendChild(l);
-    });
+  /* ---------- form <-> draft ---------- */
+  function streamerRow(name, pinned) {
+    var r = document.createElement('div'); r.className = 'srow';
+    var rad = document.createElement('input'); rad.type = 'radio'; rad.name = 'pin'; rad.checked = !!pinned; rad.title = 'Show this one when not cycling';
+    var t = document.createElement('input'); t.type = 'text'; t.placeholder = 'twitch channel or URL'; t.value = name || ''; t.maxLength = 100;
+    var x = document.createElement('button'); x.className = 'btn ghost small'; x.type = 'button'; x.textContent = '✕';
+    x.addEventListener('click', function () { r.remove(); ensurePinned(); onEdit(true); });
+    r.appendChild(rad); r.appendChild(t); r.appendChild(x);
+    $('streamRows').appendChild(r);
+    return t;
   }
-  function pushRotation() {
-    var scenes = Array.prototype.filter.call($('rotScenes').querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; });
-    push({ rotation: { enabled: $('rotEnabled').checked, seconds: Number($('rotSeconds').value) || 20, scenes: scenes } },
-      $('rotEnabled').checked ? 'Auto-rotate on' : 'Auto-rotate off');
+  function ensurePinned() {
+    var radios = $('streamRows').querySelectorAll('input[type=radio]');
+    if (radios.length && !Array.prototype.some.call(radios, function (c) { return c.checked; })) radios[0].checked = true;
   }
-
   function goalRow(amount, label) {
     var r = document.createElement('div'); r.className = 'goal-row';
     var a = document.createElement('input'); a.type = 'number'; a.min = '1'; a.placeholder = '$ amount'; a.value = amount || '';
     var l = document.createElement('input'); l.type = 'text'; l.maxLength = 40; l.placeholder = 'What happens at this amount?'; l.value = label || '';
     var x = document.createElement('button'); x.className = 'btn ghost small'; x.type = 'button'; x.textContent = '✕';
-    x.addEventListener('click', function () { r.remove(); });
+    x.addEventListener('click', function () { r.remove(); onEdit(true); });
     r.appendChild(a); r.appendChild(l); r.appendChild(x);
     $('goalRows').appendChild(r);
   }
-
-  function highlight() {
-    Array.prototype.forEach.call(document.querySelectorAll('.scene-btn'), function (b) {
-      b.classList.toggle('on', state && b.dataset.scene === state.scene && !(state.rotation && state.rotation.enabled));
+  function buildRotChips() {
+    var box = $('rotScenes'); box.textContent = '';
+    Object.keys(SCENE_NAMES).forEach(function (k) {
+      var l = document.createElement('label');
+      var c = document.createElement('input'); c.type = 'checkbox'; c.value = k;
+      l.appendChild(c); l.appendChild(document.createTextNode(SCENE_NAMES[k]));
+      box.appendChild(l);
     });
   }
 
-  function fillForms() {
-    var s = state;
-    $('streamChannel').value = s.streamChannel || '';
+  function writeForm(s) {
+    draftScene = s.scene;
+    $('rotEnabled').checked = !!s.rotation.enabled;
+    $('rotSeconds').value = s.rotation.seconds;
+    Array.prototype.forEach.call($('rotScenes').querySelectorAll('input'), function (c) { c.checked = s.rotation.scenes.indexOf(c.value) >= 0; });
+    $('streamRows').textContent = '';
+    var pin = s.streamers.indexOf(s.streamPinned) >= 0 ? s.streamPinned : (s.streamers[0] || '');
+    s.streamers.forEach(function (n) { streamerRow(n, n === pin); });
+    ensurePinned();
+    $('cycleEnabled').checked = !!s.streamCycle.enabled;
+    $('cycleSeconds').value = s.streamCycle.seconds;
     $('messageTitle').value = s.messageTitle || '';
     $('message').value = s.message || '';
     $('evStart').value = toLocalInput(s.eventStart);
     $('evEnd').value = toLocalInput(s.eventEnd);
     $('participantId').value = s.participantId || '';
     $('teamId').value = s.teamId || '';
-    $('title').value = s.title || '';
     $('accent').value = s.accent || '#FFCB05';
     $('alerts').checked = !!s.alerts;
     $('goalRows').textContent = '';
     (s.stretchGoals || []).forEach(function (g) { goalRow(g.amount, g.label); });
+    onEdit(false);
   }
 
-  function setState(s, st, fillAll) {
-    state = s; if (typeof st === 'number') serverTime = st;
-    highlight();
-    $('rotEnabled').checked = !!s.rotation.enabled;
-    $('rotSeconds').value = s.rotation.seconds;
-    Array.prototype.forEach.call($('rotScenes').querySelectorAll('input'), function (c) { c.checked = s.rotation.scenes.indexOf(c.value) >= 0; });
-    if (fillAll) fillForms();
+  // the staged settings, in the same shape the server stores them
+  function readForm() {
+    var rows = Array.prototype.slice.call($('streamRows').querySelectorAll('.srow'));
+    var streamers = [], pinned = '';
+    rows.forEach(function (r) {
+      var name = r.querySelector('input[type=text]').value.trim();
+      if (!name) return;
+      streamers.push(name);
+      if (r.querySelector('input[type=radio]').checked) pinned = name;
+    });
+    return {
+      scene: draftScene,
+      rotation: {
+        enabled: $('rotEnabled').checked,
+        seconds: Number($('rotSeconds').value) || 20,
+        scenes: Array.prototype.filter.call($('rotScenes').querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; })
+      },
+      participantId: $('participantId').value.trim(),
+      teamId: $('teamId').value.trim(),
+      accent: $('accent').value,
+      alerts: $('alerts').checked,
+      eventStart: applied ? timeFromInput($('evStart').value, applied.eventStart) : '',
+      eventEnd: applied ? timeFromInput($('evEnd').value, applied.eventEnd) : '',
+      streamers: streamers,
+      streamCycle: { enabled: $('cycleEnabled').checked, seconds: Number($('cycleSeconds').value) || 45 },
+      streamPinned: pinned,
+      messageTitle: $('messageTitle').value.trim(),
+      message: $('message').value.trim(),
+      stretchGoals: Array.prototype.map.call($('goalRows').querySelectorAll('.goal-row'), function (r) {
+        var i = r.querySelectorAll('input'); return { amount: Number(i[0].value) || 0, label: i[1].value.trim() };
+      }).filter(function (g) { return g.amount > 0 && g.label; })
+    };
+  }
+
+  // the same fields taken from server state, so the two can be compared
+  function fromState(s) {
+    var pin = s.streamers.indexOf(s.streamPinned) >= 0 ? s.streamPinned : (s.streamers[0] || '');
+    return {
+      scene: s.scene, rotation: { enabled: !!s.rotation.enabled, seconds: s.rotation.seconds, scenes: s.rotation.scenes },
+      participantId: s.participantId, teamId: s.teamId, accent: s.accent, alerts: !!s.alerts,
+      eventStart: s.eventStart, eventEnd: s.eventEnd, streamers: s.streamers,
+      streamCycle: { enabled: !!s.streamCycle.enabled, seconds: s.streamCycle.seconds }, streamPinned: pin,
+      messageTitle: s.messageTitle, message: s.message, stretchGoals: s.stretchGoals
+    };
+  }
+  function norm(d) {   // effective pinned streamer = pinned one, else the first
+    var o = JSON.parse(JSON.stringify(d));
+    o.streamPinned = o.streamers.indexOf(o.streamPinned) >= 0 ? o.streamPinned : (o.streamers[0] || '');
+    return o;
+  }
+  function changedKeys() {
+    if (!applied) return [];
+    var d = norm(readForm()), a = norm(fromState(applied));
+    return Object.keys(d).filter(function (k) { return JSON.stringify(d[k]) !== JSON.stringify(a[k]); });
+  }
+
+  /* ---------- apply / discard ---------- */
+  function apply() {
+    if (applying || !applied) return Promise.resolve();
+    var keys = changedKeys();
+    if (!keys.length) return Promise.resolve();
+    var d = readForm(), patch = {};
+    keys.forEach(function (k) { patch[k] = d[k]; });
+    if (patch.streamers || patch.streamPinned !== undefined) { patch.streamers = d.streamers; patch.streamPinned = d.streamPinned; }
+    applying = true; updateBar();
+    return api('POST', { patch: patch }).then(function (r) {
+      applied = r.state; writeForm(applied); toast('Applied to the arcade');
+    }).catch(function (e) {
+      toast(e.message, true); if (e.status === 401) showLogin('');
+    }).then(function () { applying = false; updateBar(); });
+  }
+  function discard() { if (applied) { writeForm(applied); toast('Changes discarded'); } }
+  $('applyBtn').addEventListener('click', apply);
+  $('discardBtn').addEventListener('click', discard);
+
+  var autoOn = false;
+  try { autoOn = localStorage.getItem('arcadeAuto') === '1'; } catch (e) {}
+  $('autoApply').checked = autoOn;
+  $('autoApply').addEventListener('change', function () {
+    autoOn = this.checked;
+    try { localStorage.setItem('arcadeAuto', autoOn ? '1' : '0'); } catch (e) {}
+    if (autoOn) onEdit(true);
+  });
+
+  function updateBar() {
+    var st = $('applyStatus'), bar = $('applybar');
+    st.className = dirty ? 'dirty' : 'clean';
+    bar.classList.toggle('dirty', dirty);
+    st.textContent = '';
+    if (dirty) {
+      st.appendChild(document.createTextNode('● Unapplied changes'));
+      var sm = document.createElement('small'); sm.textContent = 'The arcade still shows the old version: ' + changedKeys().map(labelFor).filter(function (v, i, arr) { return arr.indexOf(v) === i; }).join(', '); st.appendChild(sm);
+    } else st.appendChild(document.createTextNode('✓ Arcade is up to date'));
+    $('applyBtn').disabled = !dirty || applying;
+    $('applyBtn').textContent = applying ? 'Applying…' : 'Apply to arcade';
+    $('discardBtn').disabled = !dirty || applying;
+    $('previewPill').textContent = dirty ? 'DRAFT · not live yet' : 'LIVE';
+    $('previewPill').className = 'pill ' + (dirty ? 'draft' : 'live');
+  }
+  function labelFor(k) {
+    return ({ scene: 'scene', rotation: 'rotation', participantId: 'participant', teamId: 'team', accent: 'color', alerts: 'alerts', eventStart: 'timer', eventEnd: 'timer',
+      streamers: 'guest streamers', streamCycle: 'streamer cycling', streamPinned: 'guest streamers', messageTitle: 'message', message: 'message', stretchGoals: 'stretch goals' })[k] || k;
+  }
+
+  /* ---------- edits ---------- */
+  var rotSig = '';
+  function onEdit(maybeAuto) {
+    if (!applied) return;
+    var rs = JSON.stringify(readForm().rotation) + draftScene;
+    if (rs !== rotSig) { rotSig = rs; rotEditAt = Date.now(); }
+    dirty = changedKeys().length > 0;
+    Array.prototype.forEach.call(document.querySelectorAll('.scene-btn'), function (b) {
+      b.classList.toggle('on', b.dataset.scene === draftScene && !$('rotEnabled').checked);
+    });
+    updateBar();
     sendPreview();
+    clearTimeout(autoTimer);
+    if (maybeAuto && autoOn && dirty) autoTimer = setTimeout(apply, 350);
   }
+  var mainEl = document.querySelector('main');
+  mainEl.addEventListener('input', function () { onEdit(false); });
+  mainEl.addEventListener('change', function () { onEdit(true); });
 
-  /* ---------- preview ---------- */
+  Array.prototype.forEach.call(document.querySelectorAll('.scene-btn'), function (b) {
+    b.addEventListener('click', function () { draftScene = b.dataset.scene; $('rotEnabled').checked = false; onEdit(true); });
+  });
+  $('addStreamer').addEventListener('click', function () { var t = streamerRow('', false); ensurePinned(); t.focus(); onEdit(false); });
+  $('addGoal').addEventListener('click', function () { goalRow('', ''); onEdit(false); });
+
+  document.addEventListener('keydown', function (e) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') { e.preventDefault(); apply(); return; }
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    var tag = (e.target && e.target.tagName) || '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || $('login').style.display !== 'none') return;
+    if (SCENE_KEYS[e.key] && applied) { draftScene = SCENE_KEYS[e.key]; $('rotEnabled').checked = false; onEdit(true); }
+  });
+  window.addEventListener('beforeunload', function (e) { if (dirty) { e.preventDefault(); e.returnValue = ''; } });
+
+  /* ---------- immediate actions (not staged) ---------- */
+  $('startNow').addEventListener('click', function () {
+    var hrs = Math.min(72, Math.max(1, Number($('evHours').value) || 24));
+    var start = new Date(), end = new Date(start.getTime() + hrs * 3600000);
+    api('POST', { patch: { eventStart: start.toISOString(), eventEnd: end.toISOString() } }).then(function (r) {
+      applied = r.state;
+      $('evStart').value = toLocalInput(applied.eventStart); $('evEnd').value = toLocalInput(applied.eventEnd);
+      onEdit(false); toast('Marathon started: ' + hrs + 'h (live now)');
+    }).catch(function (e) { toast(e.message, true); if (e.status === 401) showLogin(''); });
+  });
+  $('testAlert').addEventListener('click', function () {
+    api('POST', { action: 'testAlert' }).then(function (r) {
+      applied.testAlert = r.state.testAlert; applied.rev = r.state.rev; sendPreview(); toast('Test alert sent to the arcade');
+    }).catch(function (e) { toast(e.message, true); });
+  });
+
+  /* ---------- preview (shows the draft) ---------- */
+  function previewState() {
+    var s = JSON.parse(JSON.stringify(applied)), d = readForm();
+    s.scene = d.scene;
+    s.rotation = { enabled: d.rotation.enabled, seconds: Math.max(5, d.rotation.seconds), scenes: d.rotation.scenes, startedAt: rotEditAt };
+    if (/^\d{1,10}$/.test(d.participantId)) s.participantId = d.participantId; else if (!d.participantId) s.participantId = '';
+    if (/^\d{1,10}$/.test(d.teamId)) s.teamId = d.teamId; else if (!d.teamId) s.teamId = '';
+    s.accent = d.accent; s.alerts = d.alerts; s.eventStart = d.eventStart; s.eventEnd = d.eventEnd;
+    s.streamers = d.streamers.map(cleanChan).filter(Boolean);
+    s.streamCycle = { enabled: d.streamCycle.enabled, seconds: Math.max(10, d.streamCycle.seconds) };
+    s.streamPinned = s.streamers.indexOf(cleanChan(d.streamPinned)) >= 0 ? cleanChan(d.streamPinned) : '';
+    s.messageTitle = d.messageTitle; s.message = d.message; s.stretchGoals = d.stretchGoals;
+    s.rev = ++previewRev;                       // forces the preview to re-render every time
+    return s;
+  }
   function sendPreview() {
     var w = $('preview').contentWindow;
-    if (w && state && previewReady) w.postMessage({ type: 'state', state: state, serverTime: serverTime }, location.origin);
+    if (w && applied && previewReady) w.postMessage({ type: 'state', state: previewState(), serverTime: Date.now() }, location.origin);
   }
   window.addEventListener('message', function (e) {
     if (e.origin !== location.origin || !e.data || e.data.type !== 'ready') return;
@@ -316,8 +510,8 @@
   /* ---------- Extra Life status ---------- */
   function refreshEL() {
     var box = $('elStatus');
-    if (!state || !state.participantId) { box.textContent = 'Extra Life: set a participant ID'; return; }
-    fetch('/api/extralife?pid=' + encodeURIComponent(state.participantId), { cache: 'no-store' })
+    if (!applied || !applied.participantId) { box.textContent = 'Extra Life: set a participant ID'; return; }
+    fetch('/api/extralife?pid=' + encodeURIComponent(applied.participantId), { cache: 'no-store' })
       .then(function (r) { return r.json().then(function (d) { if (!r.ok) throw new Error(d.error || 'HTTP ' + r.status); return d; }); })
       .then(function (d) {
         var p = d.participant; box.textContent = '';
@@ -328,55 +522,6 @@
       .catch(function (e) { box.textContent = 'Extra Life lookup failed: ' + e.message; });
   }
   setInterval(refreshEL, 30000);
-
-  /* ---------- wiring ---------- */
-  function setScene(name) { push({ scene: name, rotation: { enabled: false, seconds: Number($('rotSeconds').value) || 20, scenes: state.rotation.scenes } }, SCENE_NAMES[name]); }
-  Array.prototype.forEach.call(document.querySelectorAll('.scene-btn'), function (b) {
-    b.addEventListener('click', function () { setScene(b.dataset.scene); });
-  });
-  $('rotEnabled').addEventListener('change', pushRotation);
-  $('rotSeconds').addEventListener('change', pushRotation);
-
-  $('showStream').addEventListener('click', function () {
-    var ch = $('streamChannel').value.trim();
-    if (!ch) return toast('Enter a Twitch channel', true);
-    push({ streamChannel: ch, scene: 'stream', rotation: { enabled: false, seconds: state.rotation.seconds, scenes: state.rotation.scenes } }, 'Showing guest stream').then(function () { $('streamChannel').value = state.streamChannel; });
-  });
-  $('showMessage').addEventListener('click', function () {
-    push({ messageTitle: $('messageTitle').value, message: $('message').value, scene: 'message', rotation: { enabled: false, seconds: state.rotation.seconds, scenes: state.rotation.scenes } }, 'Showing message');
-  });
-  $('saveTimes').addEventListener('click', function () {
-    push({ eventStart: fromLocalInput($('evStart').value), eventEnd: fromLocalInput($('evEnd').value) }, 'Times saved');
-  });
-  $('startNow').addEventListener('click', function () {
-    var hrs = Math.min(72, Math.max(1, Number($('evHours').value) || 24));
-    var start = new Date(), end = new Date(start.getTime() + hrs * 3600000);
-    push({ eventStart: start.toISOString(), eventEnd: end.toISOString() }, 'Marathon started: ' + hrs + 'h').then(function () {
-      $('evStart').value = toLocalInput(state.eventStart); $('evEnd').value = toLocalInput(state.eventEnd);
-    });
-  });
-  $('addGoal').addEventListener('click', function () { goalRow('', ''); });
-  $('saveSetup').addEventListener('click', function () {
-    var goals = Array.prototype.map.call($('goalRows').querySelectorAll('.goal-row'), function (r) {
-      var i = r.querySelectorAll('input'); return { amount: Number(i[0].value) || 0, label: i[1].value };
-    });
-    push({
-      participantId: $('participantId').value, teamId: $('teamId').value, title: $('title').value,
-      accent: $('accent').value, alerts: $('alerts').checked, stretchGoals: goals
-    }, 'Setup saved').then(function () { fillForms(); refreshEL(); });
-  });
-  $('testAlert').addEventListener('click', function () {
-    api('POST', { action: 'testAlert' }).then(function (d) { setState(d.state, d.serverTime); toast('Test alert sent'); })
-      .catch(function (e) { toast(e.message, true); });
-  });
-
-  document.addEventListener('keydown', function (e) {
-    if (e.ctrlKey || e.metaKey || e.altKey) return;
-    var tag = (e.target && e.target.tagName) || '';
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || $('login').style.display !== 'none') return;
-    var map = { '1': 'goals', '2': 'donors', '3': 'uptime', '4': 'countdown', '5': 'stream', '6': 'message' };
-    if (map[e.key] && state) setScene(map[e.key]);
-  });
 
   /* ---------- boot ---------- */
   buildRotChips();
