@@ -149,9 +149,12 @@
       chip.style.display = 'flex';
       $('strip').style.width = (p.fundraisingGoal ? Math.min(100, p.sumDonations / p.fundraisingGoal * 100) : 0) + '%';
     } else { chip.style.display = 'none'; $('strip').style.width = '0'; }
+    function shortUrl(u) { return String(u || '').trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, ''); }
     var u = $('url');
-    u.textContent = state.participantId ? 'extra-life.org/participants/' + state.participantId : '';
-    u.style.display = state.participantId && !qs.has('nourl') ? 'inline' : 'none';
+    var du = shortUrl(state.donateUrl);
+    var label = du || (state.participantId ? 'extra-life.org/participants/' + state.participantId : '');
+    u.textContent = label;
+    u.style.display = label && !qs.has('nourl') ? 'inline' : 'none';
 
     var list = buildItems(), key = JSON.stringify(list);
     if (key !== lastKey) { lastKey = key; build(list); }           // only rebuild (and restart the scroll) when content changed

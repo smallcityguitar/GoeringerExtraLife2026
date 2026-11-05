@@ -74,6 +74,9 @@
   #preview { position: absolute; left: 0; top: 0; width: 1280px; height: 720px; border: 0; transform-origin: top left; }
   #tickerBox { position: relative; width: 100%; border: 2px solid var(--line); border-radius: 8px; overflow: hidden; background: #000; }
   #tickerPreview { position: absolute; left: 0; top: 0; width: 1280px; height: 34px; border: 0; transform-origin: top left; }
+  #tempBanner { margin: 14px 22px 0; max-width: 1456px; padding: 10px 14px; border: 1px solid #7a6a2a; border-left: 4px solid var(--accent); background: #2a2a1a; border-radius: 8px; font-size: 13px; color: var(--text); }
+  @media (min-width: 1544px) { #tempBanner { margin-left: auto; margin-right: auto; } }
+  #tempBanner[hidden] { display: none; }
   #elStatus { font-size: 13px; color: var(--dim); }
   #elStatus b { color: var(--amber); }
   #toast { position: fixed; right: 20px; bottom: 20px; background: var(--card2); border: 1px solid var(--line); padding: 10px 16px; border-radius: 10px; opacity: 0; transform: translateY(10px); transition: all .25s; pointer-events: none; z-index: 30; max-width: 420px; }
@@ -114,6 +117,10 @@
     <button class="btn ghost" id="discardBtn" disabled>Discard changes</button>
     <button class="btn" id="applyBtn" disabled>Apply to arcade</button>
   </div>
+</div>
+
+<div id="tempBanner" hidden>
+  <b>Heads up: your settings are only being kept temporarily.</b> Redis storage isn't connected, so the server forgets them whenever Vercel restarts it or you redeploy. This page keeps a backup in this browser and re-applies it automatically, but to make it permanent, add the free <b>Upstash Redis</b> database in Vercel → Storage and redeploy (see the README).
 </div>
 
 <main>
@@ -182,6 +189,9 @@
         <div><label for="teamId">Team ID (optional)</label><input type="text" id="teamId" inputmode="numeric"></div>
       </div>
       <div class="hint">Both must be <b>numbers</b>. Participant ID is in your page URL (extra-life.org/participants/<b>NUMBER</b>). A team page URL with a name (like /teams/yourteam) has no number in it: open the team page and look for <b>teamID=NUMBER</b> in its links. Pasting a link that contains the number works too.</div>
+      <label for="donateUrl">Donation link (shown on the arcade and ticker)</label>
+      <input type="text" id="donateUrl" maxlength="100" placeholder="e.g. bossnation.com/donate  (blank = your Extra Life page)">
+      <div class="hint">Your custom short link. It is only displayed as text (the arcade can't be clicked), so keep it short and easy to read.</div>
       <div class="grid2">
         <div><label for="accent">Accent color</label><input type="color" id="accent" value="#FFCB05"></div>
       </div>
@@ -193,6 +203,17 @@
         <button class="btn ghost" id="testAlert" type="button">Send test alert</button>
         <span class="hint" style="margin:0">Test alert pops up on the live arcade immediately.</span>
       </div>
+    </section>
+
+    <section class="card">
+      <h2>Settings backup</h2>
+      <div class="hint" style="margin-top:0">Every time you apply, a backup is kept in this browser and restored automatically if the server ever comes up empty. You can also save your settings to a file.</div>
+      <div class="actions">
+        <button class="btn ghost" id="exportBtn" type="button">Download settings file</button>
+        <button class="btn ghost" id="importBtn" type="button">Load from file…</button>
+        <input type="file" id="importFile" accept=".json,application/json" hidden>
+      </div>
+      <div class="hint">Loading a file only fills in the form as a draft; press Apply to send it to the arcade. To bake your settings into the code, save the downloaded file as <code>api/_defaults.json</code> in your GitHub repo.</div>
     </section>
   </div>
 
@@ -243,6 +264,14 @@
     });
   }
 
+  /* ---------- browser backup of the applied settings ---------- */
+  function saveBackup() {
+    try { if (applied && applied.rev > 0) localStorage.setItem('arcadeBackup', JSON.stringify(fromState(applied))); } catch (e) {}
+  }
+  function loadBackup() {
+    try { var b = JSON.parse(localStorage.getItem('arcadeBackup') || 'null'); return b && typeof b === 'object' ? b : null; } catch (e) { return null; }
+  }
+
   /* ---------- login ---------- */
   function showLogin(msg) { $('login').style.display = 'flex'; $('loginErr').textContent = msg || ''; $('tokenInput').focus(); }
   function verify() {
@@ -252,7 +281,15 @@
       var p = $('storePill');
       if (d.persistent) { p.textContent = 'connected · saved to Redis'; p.className = 'pill ok'; }
       else { p.textContent = 'connected · TEMPORARY storage (add Redis)'; p.className = 'pill bad'; }
+      $('tempBanner').hidden = !!d.persistent;
       refreshEL();
+      var bk = applied.rev === 0 ? loadBackup() : null;      // server came up empty: put the saved settings back
+      if (bk) {
+        return api('POST', { patch: bk }).then(function (r) {
+          applied = r.state; writeForm(applied); saveBackup(); refreshEL(); toast('Restored your saved settings');
+        }).catch(function (e) { toast('Could not restore backup: ' + e.message, true); });
+      }
+      saveBackup();
     });
   }
   $('loginForm').addEventListener('submit', function (e) {
@@ -329,6 +366,7 @@
     $('evStart').value = toLocalInput(s.eventStart);
     $('evEnd').value = toLocalInput(s.eventEnd);
     $('participantId').value = s.participantId || '';
+    $('donateUrl').value = s.donateUrl || '';
     $('teamId').value = s.teamId || '';
     $('accent').value = s.accent || '#FFCB05';
     $('alerts').checked = !!s.alerts;
@@ -355,6 +393,7 @@
         scenes: Array.prototype.filter.call($('rotScenes').querySelectorAll('input'), function (c) { return c.checked; }).map(function (c) { return c.value; })
       },
       participantId: $('participantId').value.trim(),
+      donateUrl: $('donateUrl').value.trim(),
       teamId: $('teamId').value.trim(),
       accent: $('accent').value,
       alerts: $('alerts').checked,
@@ -377,7 +416,7 @@
     var pin = s.streamers.indexOf(s.streamPinned) >= 0 ? s.streamPinned : (s.streamers[0] || '');
     return {
       scene: s.scene, rotation: { enabled: !!s.rotation.enabled, seconds: s.rotation.seconds, scenes: s.rotation.scenes },
-      participantId: s.participantId, teamId: s.teamId, accent: s.accent, alerts: !!s.alerts,
+      participantId: s.participantId, donateUrl: s.donateUrl || '', teamId: s.teamId, accent: s.accent, alerts: !!s.alerts,
       eventStart: s.eventStart, eventEnd: s.eventEnd, streamers: s.streamers,
       streamCycle: { enabled: !!s.streamCycle.enabled, seconds: s.streamCycle.seconds }, streamPinned: pin,
       messageTitle: s.messageTitle, message: s.message, tickerMessages: s.tickerMessages, stretchGoals: s.stretchGoals
@@ -404,7 +443,7 @@
     if (patch.streamers || patch.streamPinned !== undefined) { patch.streamers = d.streamers; patch.streamPinned = d.streamPinned; }
     applying = true; updateBar();
     return api('POST', { patch: patch }).then(function (r) {
-      applied = r.state; writeForm(applied); toast('Applied to the arcade');
+      applied = r.state; writeForm(applied); saveBackup(); toast('Applied to the arcade');
     }).catch(function (e) {
       toast(e.message, true); if (e.status === 401) showLogin('');
     }).then(function () { applying = false; updateBar(); });
@@ -438,7 +477,7 @@
     $('previewPill').className = 'pill ' + (dirty ? 'draft' : 'live');
   }
   function labelFor(k) {
-    return ({ scene: 'scene', rotation: 'rotation', participantId: 'participant', teamId: 'team', accent: 'color', alerts: 'alerts', eventStart: 'timer', eventEnd: 'timer',
+    return ({ scene: 'scene', rotation: 'rotation', participantId: 'participant', donateUrl: 'donation link', teamId: 'team', accent: 'color', alerts: 'alerts', eventStart: 'timer', eventEnd: 'timer',
       streamers: 'guest streamers', streamCycle: 'streamer cycling', streamPinned: 'guest streamers', messageTitle: 'message', message: 'message', tickerMessages: 'ticker messages', stretchGoals: 'stretch goals' })[k] || k;
   }
 
@@ -481,7 +520,7 @@
     var hrs = Math.min(72, Math.max(1, Number($('evHours').value) || 24));
     var start = new Date(), end = new Date(start.getTime() + hrs * 3600000);
     api('POST', { patch: { eventStart: start.toISOString(), eventEnd: end.toISOString() } }).then(function (r) {
-      applied = r.state;
+      applied = r.state; saveBackup();
       $('evStart').value = toLocalInput(applied.eventStart); $('evEnd').value = toLocalInput(applied.eventEnd);
       onEdit(false); toast('Marathon started: ' + hrs + 'h (live now)');
     }).catch(function (e) { toast(e.message, true); if (e.status === 401) showLogin(''); });
@@ -492,6 +531,34 @@
     }).catch(function (e) { toast(e.message, true); });
   });
 
+  /* ---------- settings file ---------- */
+  $('exportBtn').addEventListener('click', function () {
+    if (!applied) return;
+    var blob = new Blob([JSON.stringify(fromState(applied), null, 2) + '\n'], { type: 'application/json' });
+    var a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = '_defaults.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+  });
+  $('importBtn').addEventListener('click', function () { $('importFile').click(); });
+  $('importFile').addEventListener('change', function () {
+    var f = this.files && this.files[0]; this.value = '';
+    if (!f || !applied) return;
+    var rd = new FileReader();
+    rd.onload = function () {
+      try {
+        var j = JSON.parse(rd.result), base = fromState(applied), s = JSON.parse(JSON.stringify(applied));
+        if (!j || typeof j !== 'object') throw new Error('bad');
+        Object.keys(base).forEach(function (k) { if (k in j) s[k] = j[k]; });
+        s.rotation = Object.assign({}, applied.rotation, j.rotation || {});
+        s.streamCycle = Object.assign({}, applied.streamCycle, j.streamCycle || {});
+        ['streamers', 'tickerMessages', 'stretchGoals'].forEach(function (k) { if (!Array.isArray(s[k])) s[k] = []; });
+        if (!Array.isArray(s.rotation.scenes)) s.rotation.scenes = [];
+        writeForm(s); toast('Settings loaded as a draft. Press Apply to use them.');
+      } catch (e) { toast('That file isn\'t a valid settings file', true); }
+    };
+    rd.readAsText(f);
+  });
+
   /* ---------- preview (shows the draft) ---------- */
   function previewState() {
     var s = JSON.parse(JSON.stringify(applied)), d = readForm();
@@ -499,6 +566,7 @@
     s.rotation = { enabled: d.rotation.enabled, seconds: Math.max(5, d.rotation.seconds), scenes: d.rotation.scenes, startedAt: rotEditAt };
     if (/^\d{1,10}$/.test(d.participantId)) s.participantId = d.participantId; else if (!d.participantId) s.participantId = '';
     if (/^\d{1,10}$/.test(d.teamId)) s.teamId = d.teamId; else if (!d.teamId) s.teamId = '';
+    s.donateUrl = d.donateUrl;
     s.accent = d.accent; s.alerts = d.alerts; s.eventStart = d.eventStart; s.eventEnd = d.eventEnd;
     s.streamers = d.streamers.map(cleanChan).filter(Boolean);
     s.streamCycle = { enabled: d.streamCycle.enabled, seconds: Math.max(10, d.streamCycle.seconds) };

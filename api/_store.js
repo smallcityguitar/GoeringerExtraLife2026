@@ -15,6 +15,7 @@ const DEFAULTS = {
   scene: 'goals',
   rotation: { enabled: false, seconds: 20, scenes: ['goals', 'donors', 'uptime'], startedAt: 0 },
   accent: '#ffcb05',
+  donateUrl: '',
   participantId: '',
   teamId: '',
   alerts: true,
@@ -31,6 +32,21 @@ const DEFAULTS = {
   updatedAt: 0,
 };
 
+// Optional settings baked into the code (api/_defaults.json, e.g. exported from the control panel).
+// They only seed a brand-new / empty store; anything saved from the control panel wins.
+let BAKED = {};
+try { BAKED = require('./_defaults.json'); } catch (e) { BAKED = {}; }
+let _start = null;
+function baseState() {
+  if (!_start) {
+    let st = JSON.parse(JSON.stringify(DEFAULTS));
+    try { st = applyPatch(st, BAKED && typeof BAKED === 'object' ? BAKED : {}); } catch (e) { st = JSON.parse(JSON.stringify(DEFAULTS)); }
+    st.rev = 0; st.updatedAt = 0;
+    _start = st;
+  }
+  return JSON.parse(JSON.stringify(_start));
+}
+
 async function redis(cmd) {
   const r = await fetch(REST_URL, {
     method: 'POST',
@@ -44,13 +60,16 @@ async function redis(cmd) {
 }
 
 function merge(saved) {
-  const s = Object.assign({}, DEFAULTS, saved || {});
-  s.rotation = Object.assign({}, DEFAULTS.rotation, (saved && saved.rotation) || {});
-  s.testAlert = Object.assign({}, DEFAULTS.testAlert, (saved && saved.testAlert) || {});
-  s.streamCycle = Object.assign({}, DEFAULTS.streamCycle, (saved && saved.streamCycle) || {});
+  const sv = saved || {};
+  const base = baseState();
+  const s = Object.assign(base, sv);
+  s.rotation = Object.assign({}, baseState().rotation, sv.rotation || {});
+  s.testAlert = Object.assign({}, DEFAULTS.testAlert, sv.testAlert || {});
+  s.streamCycle = Object.assign({}, baseState().streamCycle, sv.streamCycle || {});
   s.streamers = Array.isArray(s.streamers) ? s.streamers.slice() : [];
   s.tickerMessages = Array.isArray(s.tickerMessages) ? s.tickerMessages.slice() : [];
-  if (saved && saved.streamChannel && !s.streamers.length) s.streamers = [saved.streamChannel]; // migrate v1 state
+  s.stretchGoals = Array.isArray(s.stretchGoals) ? s.stretchGoals.slice() : [];
+  if (sv.streamChannel && !s.streamers.length) s.streamers = [sv.streamChannel]; // migrate v1 state
   delete s.streamChannel;
   delete s.title;
   return s;
@@ -96,6 +115,18 @@ function isoOrEmpty(v) {
   return Number.isNaN(t) ? null : new Date(t).toISOString();
 }
 
+// Donation link shown on the arcade/ticker. Any URL or bare domain/path; no spaces or odd characters.
+function cleanDonateUrl(v) {
+  const t = String(v == null ? '' : v).trim();
+  if (!t) return '';
+  if (t.length > 100 || !/^[\w.\-~:/?#\[\]@!$&'()*+,;=%]+$/.test(t)) {
+    const e = new Error('The donation link can\'t contain spaces or unusual characters (max 100 characters).');
+    e.status = 400;
+    throw e;
+  }
+  return t;
+}
+
 function cleanChannel(v) {
   if (typeof v !== 'string') return '';
   const c = v.trim().replace(/^https?:\/\/(www\.)?twitch\.tv\//i, '').replace(/^@/, '').replace(/[/?#].*$/, '');
@@ -121,6 +152,7 @@ function applyPatch(cur, patch) {
   if ('participantId' in patch) s.participantId = extractId(patch.participantId, 'participant');
   if ('teamId' in patch) s.teamId = extractId(patch.teamId, 'team');
   if ('alerts' in patch) s.alerts = !!patch.alerts;
+  if ('donateUrl' in patch) s.donateUrl = cleanDonateUrl(patch.donateUrl);
 
   if ('eventStart' in patch) { const v = isoOrEmpty(patch.eventStart); if (v !== null) s.eventStart = v; }
   if ('eventEnd' in patch) { const v = isoOrEmpty(patch.eventEnd); if (v !== null) s.eventEnd = v; }

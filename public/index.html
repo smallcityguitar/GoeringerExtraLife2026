@@ -285,9 +285,11 @@
     if (pidChanged) fetchEL();
   }
 
+  function shortUrl(u) { return String(u || '').trim().replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^www\./i, '').replace(/\/+$/, ''); }
   function renderStatic() {
     document.documentElement.style.setProperty('--accent', state.accent || '#FFCB05');
-    $('donate').textContent = 'Donate: extra-life.org' + (state.participantId ? '/participants/' + state.participantId : '');
+    var du = shortUrl(state.donateUrl);
+    $('donate').textContent = 'Donate: ' + (du || 'extra-life.org' + (state.participantId ? '/participants/' + state.participantId : ''));
     $('msgTitle').textContent = state.messageTitle || '';
     $('msgTitle').style.display = state.messageTitle ? 'block' : 'none';
     $('msgBody').textContent = state.message || '';
