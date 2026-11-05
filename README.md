@@ -29,6 +29,20 @@ A thin bar (about 4-5% of screen height) that sits at the bottom. Best use: in O
 
 Options (add to the URL, combine with `&`): `?scale=1.3` bigger, `?speed=1.5` faster, `?items=progress,donor,milestone,team,custom` choose and reorder what scrolls, `?clear=1` no bar background, `?nourl=1` hide the donate link, `?poll=10` seconds between refreshes. Custom messages are edited in the control panel (**Ticker bar** card) and go live with **Apply**.
 
+## Keeping your settings between updates
+
+Your control-panel settings live in the **Redis database**, not in your code, so uploading new code to GitHub never touches them, **as long as Redis is connected** (Vercel project → Storage → Upstash Redis → connect → redeploy). The pill at the top of the control panel says `saved to Redis` when it is working, and shows a warning if it isn't.
+
+Two extra safety nets:
+- **Browser backup:** every Apply is also saved in your browser. If the server ever comes up empty, the control panel puts your settings back automatically when you open it.
+- **Settings file:** *Settings backup → Download settings file* gives you `_defaults.json`. Save it as `api/_defaults.json` in your repo and those become the starting settings for any fresh deployment. (Anything saved from the control panel still wins.)
+
+You can also *Load from file…* to fill the form from a downloaded file (it stays a draft until you press Apply).
+
+## Donation link
+
+*Extra Life setup → Donation link* sets the link shown in the arcade footer and on the ticker (for example `bossnation.com/donate`). Leave it blank to show your Extra Life page address instead.
+
 ## Steam Deck
 
 Open `https://YOUR-PROJECT.vercel.app/` in a browser and make it full screen (F11 in Desktop Mode). The cursor is hidden on that page. The display syncs to the server's clock, so timers stay correct even if the Deck's clock drifts.
