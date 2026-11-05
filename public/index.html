@@ -75,7 +75,7 @@
   .barwrap { position: relative; }
   .bar { position: relative; height: calc(var(--u) * 4.6); border-radius: 999px; background: var(--navy-deep); border: 3px solid rgba(255, 255, 255, 0.28); }
   .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; width: 0; border-radius: 999px; background: linear-gradient(90deg, var(--teal), var(--cyan)); transition: width 1.4s cubic-bezier(.2, .8, .2, 1); }
-  #dots { position: absolute; inset: 0; pointer-events: none; }
+  #dots, .dots { position: absolute; inset: 0; pointer-events: none; }
   .dot {
     position: absolute; top: 50%; width: calc(var(--u) * 1.5); height: calc(var(--u) * 1.5); border-radius: 50%;
     background: #fff; transform: translate(-50%, -50%); box-shadow: 0 0 0 3px rgba(22, 34, 45, 0.55);
@@ -154,6 +154,39 @@
   #alAmt { font-size: calc(var(--u) * 11); color: var(--teal); line-height: 1.1; }
   #alMsg { font-size: calc(var(--u) * 3); font-weight: 600; margin-top: calc(var(--u) * 1); line-height: 1.25; color: #52667a; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 
+
+  /* progress tile: only used on tall (portrait) screens */
+  #progTile, #mileTile { display: none; }
+  .empty-tile { display: none !important; }
+  #mTeam { margin-top: calc(var(--u) * 1.2); font-size: calc(var(--u) * 1.9); color: var(--dim); font-weight: 600; }
+  #mTeam b { color: #fff; font-weight: 800; }
+  #mList { margin-top: calc(var(--u) * 1); display: grid; gap: calc(var(--u) * 0.8); }
+  #mList .sg { font-size: calc(var(--u) * 2.2); }
+  #mList .sg .amt { min-width: 3.5em; }
+  .tile { background: rgba(14, 22, 30, 0.45); border: 2px solid rgba(255, 255, 255, 0.18); border-radius: calc(var(--u) * 1.2); padding: calc(var(--u) * 2.2) calc(var(--u) * 2.4); }
+  #pNext { margin-top: calc(var(--u) * 1.4); font-size: calc(var(--u) * 2); color: var(--dim); font-weight: 600; min-height: 1em; }
+  #pNext b { color: var(--accent); font-weight: 800; }
+
+  /* ===== TALL / PORTRAIT screens (e.g. a vertically rotated arcade monitor) ===== */
+  @media (max-aspect-ratio: 1/1) {
+    body { --u: min(1.6vw, 0.9vh); }
+    #app { padding: calc(var(--u) * 2.4) calc(var(--u) * 2.4); gap: calc(var(--u) * 2); }
+    #foot { flex-direction: column; gap: calc(var(--u) * 1.2); text-align: center; font-size: calc(var(--u) * 1.5); }
+    #donate { font-size: calc(var(--u) * 2.2); }
+    #scene-goals { grid-template-columns: minmax(0, 1fr); gap: calc(var(--u) * 3); align-content: center; }
+    .raised { font-size: calc(var(--u) * 9.5); }
+    .big { font-size: calc(var(--u) * 10.5); }
+    #scene-donors { gap: calc(var(--u) * 2.4); justify-content: center; }
+    #progTile, #mileTile { display: block; }
+    body[data-scene="donors"] #hud { opacity: 0; }
+    #scene-donors .panel { padding: calc(var(--u) * 2.4) calc(var(--u) * 2.4); }
+    #scene-donors .don .row { font-size: calc(var(--u) * 2.9); }
+    #scene-donors .don .msg { font-size: calc(var(--u) * 1.9); }
+    #msgTitle { font-size: calc(var(--u) * 7); }
+    #msgBody { font-size: calc(var(--u) * 3.2); }
+    #alert { width: 90%; }
+  }
+
   #conn { position: fixed; left: calc(var(--u) * 1); bottom: calc(var(--u) * 1); font-size: calc(var(--u) * 1.3); color: #ffb3b3; opacity: 0; transition: opacity 0.4s; z-index: 30; }
   #conn.on { opacity: 0.9; }
 </style>
@@ -185,9 +218,24 @@
 
     <!-- DONOR WALL -->
     <section class="scene" id="scene-donors">
-      <div class="panel">
+      <div class="tile" id="progTile">
+        <div class="label" id="pLabel">RAISED SO FAR</div>
+        <div class="raised num" id="pRaised">$0</div>
+        <div class="goalrow"><span id="pGoal"></span><span class="pct num" id="pPct"></span></div>
+        <div class="barwrap">
+          <div class="bar"><div class="fill" id="pFill"></div></div>
+          <div id="pDots" class="dots"></div>
+        </div>
+        <div id="pNext"></div>
+      </div>
+      <div class="panel" id="wallPanel">
         <h2>DONOR WALL &mdash; THANK YOU!</h2>
         <div id="wallList"></div>
+      </div>
+      <div class="tile" id="mileTile">
+        <div class="label" style="font-size:calc(var(--u) * 2)">MILESTONES</div>
+        <div id="mTeam"></div>
+        <div id="mList"></div>
       </div>
     </section>
 
@@ -303,7 +351,20 @@
   function renderEL() {
     if (!state) return;
     updateGoals(); updateDonors(); updateHud();
+    fitTall();
   }
+
+  // Tall screens: show as many donor rows as fit. Drop rows down to 4, then the milestones tile, then more rows.
+  function fitTall() {
+    var sc = $('scene-donors'), wl = $('wallList'), mt = $('mileTile');
+    if (!sc || !window.matchMedia || !window.matchMedia('(max-aspect-ratio: 1/1)').matches) return;
+    var over = function () { return sc.scrollHeight > sc.clientHeight + 1; };
+    mt.style.visibility = ''; mt.style.display = '';
+    while (over() && wl.children.length > 4) wl.removeChild(wl.lastChild);
+    if (over() && !mt.classList.contains('empty-tile')) mt.style.display = 'none';
+    while (over() && wl.children.length > 1) wl.removeChild(wl.lastChild);
+  }
+  window.addEventListener('resize', function () { if (state) { updateDonors(); fitTall(); } });
 
   function updateHud() {
     var p = el.participant, hud = $('hud');
@@ -339,14 +400,25 @@
     });
     items.sort(function (a, b) { return a.amount - b.amount; });
 
-    var dots = $('dots'); clear(dots);                      // milestone dots on the bar
+    var dots = $('dots'), pd = $('pDots'); clear(dots); clear(pd);   // milestone dots on the bar (both bars)
     if (goal) items.forEach(function (g) {
       if (g.amount > 0 && g.amount <= goal) {
-        var d = h('span', 'dot' + (g.amount <= raised ? ' hit' : ''));
-        d.style.left = (g.amount / goal * 100) + '%';
-        dots.appendChild(d);
+        [dots, pd].forEach(function (box) {
+          var d = h('span', 'dot' + (g.amount <= raised ? ' hit' : ''));
+          d.style.left = (g.amount / goal * 100) + '%';
+          box.appendChild(d);
+        });
       }
     });
+
+    // progress tile (tall screens)
+    $('pRaised').textContent = money(raised);
+    $('pGoal').textContent = $('goalText').textContent;
+    $('pPct').textContent = $('pct').textContent;
+    $('pFill').style.width = $('fill').style.width;
+    $('pLabel').textContent = $('raisedLabel').textContent;
+    var nx = items.filter(function (g) { return g.amount > raised; })[0], pn = $('pNext'); clear(pn);
+    if (nx) { pn.appendChild(document.createTextNode('NEXT: ')); pn.appendChild(h('b', 'num', money(nx.amount))); pn.appendChild(document.createTextNode(' · ' + nx.label)); }
 
     var reached = items.filter(function (g) { return g.amount <= raised; });
     var next = items.filter(function (g) { return g.amount > raised; });
@@ -361,6 +433,11 @@
       row.appendChild(h('span', 'lbl', g.label));
       gl.appendChild(row);
     });
+    // milestones tile (tall screens): copy of the team line + milestone rows
+    var mt = $('mTeam'), ml = $('mList'); clear(mt); clear(ml);
+    Array.prototype.forEach.call($('teamLine').childNodes, function (n) { mt.appendChild(n.cloneNode(true)); });
+    Array.prototype.forEach.call(gl.childNodes, function (n) { ml.appendChild(n.cloneNode(true)); });
+    $('mileTile').classList.toggle('empty-tile', !gl.childNodes.length && !mt.childNodes.length);
   }
 
   function donRow(d) {
@@ -380,7 +457,8 @@
     list.slice(0, 5).forEach(function (d) { dl.appendChild(donRow(d)); });
     var wl = $('wallList'); clear(wl);
     if (!list.length) wl.appendChild(h('div', 'empty', 'Be the first to donate!'));
-    list.slice(0, 5).forEach(function (d) { wl.appendChild(donRow(d)); });
+    var tall = window.matchMedia && window.matchMedia('(max-aspect-ratio: 1/1)').matches;
+    list.slice(0, tall ? 12 : 5).forEach(function (d) { wl.appendChild(donRow(d)); });
   }
 
   function fetchEL() {
