@@ -274,10 +274,13 @@
     state = s;
     if (streamChanged) streamSince = Date.now();
     var nonce = s.testAlert && s.testAlert.nonce;
+    // Only a genuinely newer, real test alert pops up. An older/empty value (e.g. a server instance that
+    // doesn't remember the last test) is ignored instead of showing a bogus "Anonymous $0" alert.
+    nonce = Number(nonce) || 0;
     if (lastNonce === null) lastNonce = nonce;
-    else if (nonce !== lastNonce) {
+    else if (nonce > lastNonce) {
       lastNonce = nonce;
-      queueAlert({ name: s.testAlert.name, amount: s.testAlert.amount, message: s.testAlert.message });
+      if (s.testAlert && Number(s.testAlert.amount) > 0) queueAlert({ name: s.testAlert.name, amount: s.testAlert.amount, message: s.testAlert.message });
     }
     renderStatic();
     syncStream(current);
